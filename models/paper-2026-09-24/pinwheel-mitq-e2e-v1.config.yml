@@ -1,0 +1,141 @@
+########################################################################################
+# pinwheel-mitq-e2e-v1  --  the single recipe END TO END: clone -> 4M PPO, no headline warm start
+#
+# BASE
+#   experiments/self-play/quad/pinwheel-mit-q-v1, byte-identical below the header: the headline
+#   (pinwheel) config with template 64, median-normalised lengths, per-face globals, a min
+#   shape-quality term in the potential (w_q 8) and the flat-corner mask.
+#
+# WHY
+#   pinwheel-mit-q-v1 is the Table 3 row, but it is a 2M FINE-TUNE of the headline checkpoint
+#   (itself 4M PPO from a clone). To say "one recipe, trained once, works on both the 96 and the
+#   64" the run has to start from the clone like the headline did. Warm start: the 4x96 clone of
+#   the certified instances from pinwheel-v1-seed1 (6 epochs, 93.7% top-1; 7 global entries, so
+#   it loads as is), 4M steps, seed 0, certified anchor on. Selection on the four straight suites;
+#   every checkpoint scored on the four larger-boundary suites by the transfer watcher.
+#
+# OBSERVATIONS
+#   (fill in)
+
+environment:
+  name: EvaluatorAngleEnv
+  # geometry stays in the loop -- ten features, Laplacian between moves, the same
+  # eight global entries as AngleEnvWithLength. Only the win test moves: at a
+  # topologically at-par state the mesh is untangled IN PLACE and accepted on a
+  # DEGENERACY bar rather than on what a Laplacian could draw. Without this the
+  # k=4 pinwheel (0.203 under a Laplacian, 0.4 gate) is refused -- the run would
+  # teach the structure in cloning and punish it in reinforcement. The untangled
+  # mesh is kept because resmooth_env never returns something worse than it was
+  # given, so the agent carries on from the better drawing of its own topology.
+  degeneracy_threshold: 0.1
+  evaluator: untangle
+  untangle_iterations: 4
+  warm_start_iterations: 5
+  evaluator_slide: laplacian   # 3 ms and 0.414 at k=4, against 101 ms and 0.660
+                               # for the optimised slide; both clear a 0.1 bar,
+                               # and the cheap one errs toward refusing
+  initializer:
+    name: Mixture
+    weights: [0.17, 0.17, 0.16, 0.17, 0.17, 0.16]
+    components:
+      # --- hole-free: the three families the v1 study measured -----------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        ratio: 5
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 24
+      # --- with holes: new in this study --------------------------------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: [1, 2]
+        ratio: 8
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: [1, 2]
+        ratio: 8
+        n_ops: [1, 2]
+        n_mods: [0, 2]
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 1
+        ratio: 6
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 20
+  face_desired_degree: 4
+  template_size: 64
+  normalize_lengths: median
+  global_features: intensive
+  max_edge_addition_steps: 3
+  max_steps_factor: 3.0
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.10
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  quality_metric: shape
+  quality_aggregate: min
+  quality_potential_weight: 8.0
+  mask_flat_quads: true
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: true
+  terminate_on_overflow: false
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 250000
+total_timesteps: 4_000_000

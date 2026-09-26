@@ -1,0 +1,5606 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mesh Quest</title>
+<style>
+/* Mesh Quest — Copyright 2026 Arjun Narayanan.
+ * Licensed under the MIT License (see LICENSE). */
+:root {
+  --paper: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #17242e;
+  --muted: #5d6b77;
+  --line: #d7dee5;
+  --grid: rgba(31, 111, 214, 0.055);
+  --grid-major: rgba(31, 111, 214, 0.1);
+  --accent: #1f6fd6;
+  --halo: rgba(31, 111, 214, 0.16);
+  --glow: rgba(31, 111, 214, 0.75);
+  --good: #2b8a4d;
+  --warn: #d9962e;
+  --bad: #cf4433;
+  /* mosaic: a finished quad is a coloured tile, anything else is dull glass */
+  --tile-0: #f0a08c;
+  --tile-1: #f0c47a;
+  --tile-2: #a8d18a;
+  --tile-3: #7fcfc4;
+  --tile-4: #93bfe8;
+  --tile-5: #b3aae0;
+  --tile-6: #e7a6c4;
+  --tile-7: #ddd08a;
+  --tile-alpha: 0.82;
+  --face-dull: rgba(147, 161, 174, 0.22);
+  --edge: #46545f;
+  --edge-bdry: #17242e;
+  --vertex-ring: #ffffff;
+  --shadow: rgba(23, 36, 46, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #101820;
+    --panel: #18232d;
+    --ink: #e4ecf2;
+    --muted: #8b99a5;
+    --line: #2a3743;
+    --grid: rgba(90, 162, 240, 0.05);
+    --grid-major: rgba(90, 162, 240, 0.09);
+    --accent: #5aa2f0;
+  --halo: rgba(90, 162, 240, 0.22);
+  --glow: rgba(90, 162, 240, 0.9);
+    --good: #43b06a;
+    --warn: #e2a94f;
+    --bad: #e26055;
+    --tile-0: #c8664f;
+    --tile-1: #c99544;
+    --tile-2: #6a9e56;
+    --tile-3: #3f9a92;
+    --tile-4: #4b82c4;
+    --tile-5: #7f6fbe;
+    --tile-6: #b45f8e;
+    --tile-7: #a68a45;
+    --tile-alpha: 0.6;
+    --face-dull: rgba(140, 156, 172, 0.14);
+    --edge: #9fb0bd;
+    --edge-bdry: #dfe9f1;
+    --vertex-ring: #101820;
+    --shadow: rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101820;
+  --panel: #18232d;
+  --ink: #e4ecf2;
+  --muted: #8b99a5;
+  --line: #2a3743;
+  --grid: rgba(90, 162, 240, 0.05);
+  --grid-major: rgba(90, 162, 240, 0.09);
+  --accent: #5aa2f0;
+  --halo: rgba(90, 162, 240, 0.22);
+  --glow: rgba(90, 162, 240, 0.9);
+  --good: #43b06a;
+  --warn: #e2a94f;
+  --bad: #e26055;
+  --tile-0: #c8664f;
+  --tile-1: #c99544;
+  --tile-2: #6a9e56;
+  --tile-3: #3f9a92;
+  --tile-4: #4b82c4;
+  --tile-5: #7f6fbe;
+  --tile-6: #b45f8e;
+  --tile-7: #a68a45;
+  --tile-alpha: 0.6;
+  --face-dull: rgba(140, 156, 172, 0.14);
+  --edge: #9fb0bd;
+  --edge-bdry: #dfe9f1;
+  --vertex-ring: #101820;
+  --shadow: rgba(0, 0, 0, 0.45);
+}
+:root[data-theme="light"] {
+  --paper: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #17242e;
+  --muted: #5d6b77;
+  --line: #d7dee5;
+  --grid: rgba(31, 111, 214, 0.055);
+  --grid-major: rgba(31, 111, 214, 0.1);
+  --accent: #1f6fd6;
+  --halo: rgba(31, 111, 214, 0.16);
+  --glow: rgba(31, 111, 214, 0.75);
+  --good: #2b8a4d;
+  --warn: #d9962e;
+  --bad: #cf4433;
+  --tile-0: #f0a08c;
+  --tile-1: #f0c47a;
+  --tile-2: #a8d18a;
+  --tile-3: #7fcfc4;
+  --tile-4: #93bfe8;
+  --tile-5: #b3aae0;
+  --tile-6: #e7a6c4;
+  --tile-7: #ddd08a;
+  --tile-alpha: 0.82;
+  --face-dull: rgba(147, 161, 174, 0.22);
+  --edge: #46545f;
+  --edge-bdry: #17242e;
+  --vertex-ring: #ffffff;
+  --shadow: rgba(23, 36, 46, 0.14);
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Avenir Next", Seravek, "Segoe UI", -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+}
+header, .toolbar, #stage {
+  user-select: none;
+  -webkit-user-select: none;
+}
+#stage { touch-action: manipulation; }
+button, select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+header {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 12px 20px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand h1 {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-wrap: balance;
+}
+.brand .sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.readouts { display: flex; gap: 2px; align-items: stretch; }
+.readout {
+  min-width: 66px;
+  padding: 4px 12px 5px;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+.readout:first-child { border-left: none; }
+.readout .label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.readout .value {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.readout.at-par .value { color: var(--good); }
+.readout.alert .value { color: var(--bad); }
+.spacer { flex: 1; }
+.controls { display: flex; gap: 8px; align-items: center; }
+
+select, button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+}
+button:hover, select:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.mode kbd {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  opacity: 0.55;
+  margin-right: 5px;
+}
+.mode.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.mode.active kbd { opacity: 0.7; }
+label.auto {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  cursor: pointer;
+}
+.hint { font-size: 12.5px; color: var(--muted); margin-left: 6px; }
+
+#stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+}
+#canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#canvas.panning { cursor: grabbing; }
+#canvas.panning * { pointer-events: none; }
+#confetti { position: absolute; inset: 0; pointer-events: none; }
+
+/* the board reads as a mosaic under lead came: a sound quad is a set tile and
+   takes a colour of its own, everything unfinished stays dull grey glass */
+.face { stroke: none; }
+.face.dull { fill: var(--face-dull); }
+.face.tile { fill-opacity: var(--tile-alpha); }
+/* .pale is the same glass cut thinner — it doubles the palette so neighbouring
+   tiles that draw the same hue still read as two tiles */
+.face.tile.pale { fill-opacity: calc(var(--tile-alpha) - 0.22); }
+.t0 { fill: var(--tile-0); }
+.t1 { fill: var(--tile-1); }
+.t2 { fill: var(--tile-2); }
+.t3 { fill: var(--tile-3); }
+.t4 { fill: var(--tile-4); }
+.t5 { fill: var(--tile-5); }
+.t6 { fill: var(--tile-6); }
+.t7 { fill: var(--tile-7); }
+/* a tile is only "fresh" on the render that first colours it, so the set
+   animation plays once per tile rather than on every redraw */
+.face.fresh {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tile-set 0.45s ease-out;
+}
+@keyframes tile-set {
+  0% { opacity: 0; transform: scale(0.68); }
+  55% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.edge { stroke: var(--edge); stroke-width: 2; fill: none; pointer-events: none; }
+.edge.boundary { stroke: var(--edge-bdry); stroke-width: 3; }
+.edge.glow { filter: drop-shadow(0 0 4px var(--glow)); }
+.vertex.glow { filter: drop-shadow(0 0 5px var(--glow)); }
+.edge.near { stroke: var(--accent) !important; stroke-width: 5 !important; }
+.vertex { stroke: var(--vertex-ring); stroke-width: 1.5; }
+.vertex.user { stroke: var(--edge-bdry); stroke-width: 2.5; }
+.vertex.ok { fill: var(--good); }
+.vertex.off1 { fill: var(--warn); }
+.vertex.off2 { fill: var(--bad); }
+.vertex.near { stroke: var(--accent); stroke-width: 4; }
+.vertex.selected { stroke: var(--accent); stroke-width: 4; }
+.vlabel {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--vertex-ring);
+  text-anchor: middle;
+  pointer-events: none;
+}
+/* a corner squashed flat can never carry a tile: ring it in red until fixed */
+.vwash { fill: var(--bad); pointer-events: none; }
+.vhalo {
+  fill: none;
+  stroke: var(--bad);
+  stroke-width: 2.5;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 5px var(--bad));
+  animation: halo-throb 1.7s ease-in-out infinite;
+}
+@keyframes halo-throb {
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.14); opacity: 1; }
+}
+.dim { opacity: 0.25; pointer-events: none; }
+#canvas.has-target { cursor: pointer; }
+
+#toast {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  max-width: 80%;
+}
+#toast.show { opacity: 0.95; }
+
+.lvlarrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 12px var(--shadow);
+  display: none;
+  transition: transform 0.15s;
+}
+.lvlarrow.show { display: block; }
+.lvlarrow:hover {
+  transform: translateY(-50%) scale(1.1);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+#next.win {
+  background: var(--good);
+  border-color: var(--good);
+  color: #fff;
+  width: 60px;
+  height: 60px;
+  font-size: 27px;
+  box-shadow: 0 6px 18px var(--shadow);
+}
+
+.corner-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#heart {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#heart .glyph { font-size: 14px; }
+#heart:hover { color: var(--bad); border-color: var(--bad); transform: translateY(-1px); }
+#heart.hearted { color: var(--bad); border-color: var(--bad); }
+#heart.pop .glyph { animation: heart-pop 0.5s ease-out; display: inline-block; }
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.6); }
+  100% { transform: scale(1); }
+}
+/* offered only on a solved board, so it gets the win colour */
+#share {
+  font-size: 12.5px;
+  color: #fff;
+  background: var(--good);
+  border: 1px solid var(--good);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#share .glyph { font-size: 11px; }
+#share:hover { transform: translateY(-1px); filter: brightness(1.08); }
+#share[hidden] { display: none; }
+
+#sharesheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(23, 36, 46, 0.5);
+  backdrop-filter: blur(2px);
+}
+#sharesheet[hidden] { display: none; }
+#sharebox {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px 16px 14px;
+  box-shadow: 0 16px 40px var(--shadow);
+}
+#sharebox .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+#share-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+#share-close:hover { color: var(--ink); }
+/* the frame keeps its height while rendering, so nothing jumps when the GIF lands */
+#share-stage {
+  position: relative;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+#share-img {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+#share-img[hidden] { display: none; }
+#share-track {
+  width: 100%;
+  max-width: 300px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+#sharebox:not(.working) #share-track { visibility: hidden; }
+#share-bar {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+#share-status { font-size: 12px; color: var(--muted); }
+#share-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 13px;
+}
+#share-actions button {
+  flex: 1;
+  font-size: 14px;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+#share-save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+#share-save:disabled, #share-send:disabled { opacity: 0.45; }
+#share-send[hidden] { display: none; }
+
+#star {
+  display: inline-block;
+  font-size: 12.5px;
+  text-decoration: none;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#star:hover { color: var(--ink); border-color: var(--accent); transform: translateY(-1px); }
+#star:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* the diagnosis channel: it has to be findable without being told where it is,
+   so it is a labelled pill like its neighbours rather than a lone glyph */
+#log-export {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#log-export .glyph { font-size: 14px; }
+#log-export:hover { color: var(--ink); border-color: var(--ink); transform: translateY(-1px); }
+
+#tutcard {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(260px, 24vw, 360px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px 16px 12px;
+  box-shadow: 0 10px 30px var(--shadow);
+  display: none;
+}
+#tutcard.show { display: block; }
+#tutcard .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+#tutcard .body { font-size: 15px; line-height: 1.45; }
+#tutcard .actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 13px;
+  gap: 4px;
+}
+#tut-next {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-size: 14.5px;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+#tut-next.hidden { display: none; }
+#tut-skip {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+#tut-skip:hover { color: var(--ink); }
+#tut-open {
+  position: absolute;
+  left: 20px;
+  top: calc(50% + 64px);
+  transform: translateY(-50%);
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 36px;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 0 0 5px var(--halo), 0 4px 12px var(--shadow);
+  animation: halo-breathe 2.8s ease-in-out infinite;
+  transition: transform 0.15s;
+}
+#tut-open:hover { transform: translateY(-50%) scale(1.1); border-color: var(--accent); }
+@keyframes halo-breathe {
+  0%, 100% { box-shadow: 0 0 0 4px var(--halo), 0 4px 12px var(--shadow); }
+  50% { box-shadow: 0 0 0 9px var(--halo), 0 4px 12px var(--shadow); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #tut-open { animation: none; }
+}
+#tutcard.show ~ #tut-open { display: none; }
+@media (max-width: 720px) {
+  #tutcard {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    transform: none;
+    width: auto;
+    padding: 11px 13px 9px;
+    border-radius: 12px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  #tutcard .eyebrow { font-size: 11px; margin-bottom: 7px; }
+  #tutcard .body { font-size: 14px; line-height: 1.4; }
+  #tutcard svg { max-height: 76px; margin-bottom: 7px; }
+  #tutcard .actions { margin-top: 9px; }
+  #tut-next { font-size: 14px; padding: 9px 12px; }
+  #tut-skip { font-size: 21px; top: 5px; right: 6px; }
+  #tutcard.show ~ #toast { bottom: 46vh; }
+  /* card open: hand the header/toolbar space to the board */
+  body.card-open > .toolbar { display: none; }
+  body.card-open > header { display: none; }
+  body.card-open.chip-step > header { display: flex; }
+  #tut-open { top: auto; bottom: 14px; left: 14px; transform: none; }
+  #tut-open:hover { transform: none; }
+}
+
+/* tutorial card illustrations */
+#tutcard svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+  margin-bottom: 10px;
+}
+.tvis-line { stroke: var(--edge); stroke-width: 2.5; fill: none; }
+.tvis-dot { fill: var(--accent); }
+.tvis-blush { fill: var(--bad); }
+/* the .tN hue classes above colour these; .dN only staggers them */
+.tvis-tile { opacity: 0; animation: tvis-tile 2.7s infinite; }
+.tvis-tile.d2 { animation-delay: 0.35s; }
+.tvis-tile.d3 { animation-delay: 0.7s; }
+@keyframes tvis-tile { 0% { opacity: 0; } 30%, 80% { opacity: 0.8; } 100% { opacity: 0; } }
+.tvis-ray {
+  stroke: var(--accent);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tvis-draw 3s infinite;
+}
+.tvis-ray.r2 { animation-delay: 0.3s; }
+.tvis-ray.r3 { animation-delay: 0.6s; }
+.tvis-ray.r4 { animation-delay: 0.9s; }
+@keyframes tvis-draw { 0% { stroke-dashoffset: 1; } 45%, 90% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
+.tvis-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tvis-pop 1.8s ease-in-out infinite;
+}
+@keyframes tvis-pop { 0%, 15% { transform: scale(0); } 50%, 85% { transform: scale(1); } 100% { transform: scale(0); } }
+.tvis-draw {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tvis-draw 2s ease-in-out infinite;
+}
+.tvis-good {
+  fill: var(--good);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tvis-pop 2.4s ease-in-out infinite;
+}
+.tvis-good.g2 { animation-delay: 0.25s; }
+.tvis-good.g3 { animation-delay: 0.5s; }
+.tvis-cell {
+  stroke: var(--paper);
+  opacity: 0;
+  animation: tvis-tile 2.6s infinite;
+}
+.tvis-cell.pale { fill-opacity: 0.6; }
+.tvis-pulse { animation: tutpulse 1.3s ease-in-out infinite; }
+.tvis-spoke { stroke: var(--edge); stroke-width: 2; }
+.tvis-ok-label {
+  fill: var(--good);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: ui-monospace, Menlo, monospace;
+}
+.tvis-flat-label {
+  fill: var(--bad);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: ui-monospace, Menlo, monospace;
+}
+.tvis-badge { fill: var(--accent); }
+.tvis-badge-text {
+  fill: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: ui-monospace, Menlo, monospace;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tvis-tile, .tvis-cell, .tvis-ray, .tvis-pop, .tvis-draw, .tvis-good { animation: none; }
+  .tvis-tile, .tvis-cell { opacity: 0.8; }
+  .tvis-ray, .tvis-draw { stroke-dashoffset: 0; }
+}
+
+@keyframes tutpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.edge.tut-target {
+  stroke: var(--accent) !important;
+  stroke-width: 6 !important;
+  animation: tutpulse 1.3s ease-in-out infinite;
+}
+.vertex.tut-target {
+  stroke: var(--accent) !important;
+  stroke-width: 5 !important;
+  animation: tutpulse 1.3s ease-in-out infinite;
+}
+.readout.tut-target { box-shadow: 0 0 0 2px var(--accent); border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .edge.tut-target, .vertex.tut-target { animation: none; }
+}
+
+.credit {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 46%;
+}
+.credit a { color: var(--muted); }
+.credit a:hover { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .face.fresh { animation: none; }
+  .vhalo { animation: none; opacity: 0.9; }
+  #heart.pop .glyph { animation: none; }
+  #next { transition: none; }
+  #toast { transition: none; }
+}
+
+/* touch devices: no hover previews to explain, no keyboard */
+@media (hover: none) {
+  .mode kbd, #undo kbd, #smoothbtn kbd { display: none; }
+  .hint { display: none; }
+}
+
+/* compact phone layout */
+@media (max-width: 720px) {
+  header { padding: 8px 12px 6px; gap: 8px; row-gap: 4px; }
+  .brand h1 { font-size: 14px; letter-spacing: 0.16em; }
+  .brand .sub { display: none; }
+  .readouts {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+  .readout { min-width: 0; flex: 1; padding: 2px 6px 3px; }
+  .readout .value { font-size: 16px; }
+  .controls { margin-left: auto; }
+  select, button { padding: 8px 10px; }
+  .toolbar { padding: 6px 8px; gap: 6px; }
+  .toolbar .mode {
+    flex: 1;
+    min-height: 42px;
+    padding: 6px 2px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  label.auto { font-size: 12px; }
+  .credit { display: none; }
+  .corner-actions { right: 12px; bottom: 12px; gap: 6px; }
+  #star, #heart, #share, #log-export { font-size: 11.5px; padding: 6px 10px; }
+  #heart .label, #log-export .label { display: none; }
+  /* a narrow corner can't hold four pills: the star yields to the share button
+     for as long as there is a solve to share */
+  #share:not([hidden]) ~ #star { display: none; }
+  body.card-open .corner-actions { display: none; }
+  .lvlarrow { width: 52px; height: 52px; font-size: 22px; }
+  #next.win { width: 64px; height: 64px; font-size: 30px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>MESH QUEST</h1>
+    <div class="sub">slice shapes into blocks</div>
+  </div>
+  <div class="readouts">
+    <div class="readout" id="r-score"><div class="label">Score</div><div class="value" id="s-vertex">–</div></div>
+    <div class="readout" id="r-par"><div class="label">Par</div><div class="value" id="s-par">–</div></div>
+    <div class="readout" id="r-quality"><div class="label">Quality</div><div class="value" id="s-quality">–</div></div>
+    <div class="readout"><div class="label">Moves</div><div class="value" id="s-moves">–</div></div>
+    <div class="readout"><div class="label">Best</div><div class="value" id="s-best">–</div></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="controls">
+    <select id="shape" aria-label="Level"></select>
+    <select id="target" aria-label="Element type">
+      <option value="4">Quads</option>
+      <option value="3">Triangles</option>
+    </select>
+    <button id="reset">New game</button>
+  </div>
+</header>
+<div class="toolbar">
+  <button class="mode" data-mode="insert_vertex"><kbd>1</kbd>+ Vertex</button>
+  <button class="mode" data-mode="delete_vertex"><kbd>2</kbd>&minus; Vertex</button>
+  <button class="mode" data-mode="insert_edge"><kbd>3</kbd>+ Edge</button>
+  <button class="mode" data-mode="delete_edge"><kbd>4</kbd>&minus; Edge</button>
+  <button id="undo"><kbd style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;opacity:.55;margin-right:5px">u</kbd>Undo</button>
+  <button id="smoothbtn"><kbd style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;opacity:.55;margin-right:5px">s</kbd>Smooth</button>
+  <label class="auto"><input type="checkbox" id="autosmooth" checked> auto-smooth</label>
+  <span class="hint" id="hint"></span>
+</div>
+<div id="stage">
+  <svg id="canvas"></svg>
+  <canvas id="confetti"></canvas>
+  <button id="prev" class="lvlarrow" title="Previous level">&larr;</button>
+  <button id="next" class="lvlarrow" title="Next level">&rarr;</button>
+  <div class="credit">Mesh Quest &copy; 2026 Arjun Narayanan &middot; part of <a href="https://arjunnarayanan.github.io/par-quad/" target="_blank" rel="noopener">Playing to Par</a> &middot; <a href="https://github.com/ArjunNarayanan/par-quad/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></div>
+  <div class="corner-actions">
+    <button id="share" title="Share your solution as a GIF" hidden><span class="glyph">&#9654;</span> <span class="label">Share solve</span></button>
+    <button id="heart" title="Love it?"><span class="glyph">&#9825;</span> <span class="label">Love it</span></button>
+    <a id="star" href="https://github.com/ArjunNarayanan/par-quad" target="_blank" rel="noopener">&#9733; Star on GitHub</a>
+    <button id="log-export" title="Download a replayable log of every move you made"><span class="glyph">&#10515;</span> <span class="label">Export moves</span></button>
+  </div>
+  <div id="tutcard">
+    <button id="tut-skip" title="Minimize">&minus;</button>
+    <div class="eyebrow" id="tut-eyebrow"></div>
+    <div class="body" id="tut-body"></div>
+    <div class="actions">
+      <button id="tut-next">Next</button>
+    </div>
+  </div>
+  <button id="tut-open" title="Tutorial">&#128075;</button>
+  <div id="sharesheet" hidden>
+    <div id="sharebox" role="dialog" aria-modal="true" aria-labelledby="share-eyebrow">
+      <button id="share-close" title="Close">&times;</button>
+      <div class="eyebrow" id="share-eyebrow">YOUR SOLVE</div>
+      <div id="share-stage">
+        <img id="share-img" alt="Animated replay of your solution" hidden>
+        <div id="share-track"><div id="share-bar"></div></div>
+        <div id="share-status">Rendering&hellip;</div>
+      </div>
+      <div id="share-actions">
+        <button id="share-save" disabled>Download GIF</button>
+        <button id="share-send" disabled hidden>Share&hellip;</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+</div>
+<script>
+// Simultaneous untangling and smoothing, ported from geo2d's `smooth.optimize`
+// (Escobar et al.): minimise, over one free node at a time,
+//
+//     sum_k (|a_k|^2 + |b_k|^2) * sin(theta_n) / (2 h(J_k))
+//
+// over the corners of the elements touching it, where a = next - node,
+// b = prev - node, J = a x b, and h(J) = (J + sqrt(J^2 + delta^2)) / 2
+// regularises the corner Jacobian so an INVERTED corner is pushed back out
+// instead of blowing the objective up. Newton steps with finite-difference
+// derivatives and backtracking, swept Gauss-Seidel.
+//
+// This is what the environment's evaluator runs, so the game agrees with the
+// agent's acceptance test rather than with a Laplacian, which cannot open a
+// folded element at all: it sits at its own fixed point and stays there.
+//
+// The port is deliberately scalar -- a Mesh Quest board is tens of elements,
+// not thousands -- and takes plain arrays so it has no dependency on the DCEL.
+
+"use strict";
+
+function cornerTerms(P) {
+  // P: [prev, node, next] as [x, y] pairs -> { J, L2 }
+  const ax = P[2][0] - P[1][0], ay = P[2][1] - P[1][1];
+  const bx = P[0][0] - P[1][0], by = P[0][1] - P[1][1];
+  return { J: ax * by - ay * bx, L2: ax * ax + ay * ay + bx * bx + by * by };
+}
+
+function objective(corners, x, delta) {
+  // Each corner is a (prev, node, next) triple of POSITIONS plus slots saying
+  // which of the three is the node being moved. The node can appear in a corner
+  // as any of the three, which is why the whole adjacent element contributes:
+  // sliding a vertex changes the corners at its neighbours too.
+  let total = 0;
+  for (const c of corners) {
+    const p = c.slots[0] ? x : c.P[0];
+    const q = c.slots[1] ? x : c.P[1];
+    const r = c.slots[2] ? x : c.P[2];
+    const { J, L2 } = cornerTerms([p, q, r]);
+    const h = 0.5 * (J + Math.sqrt(J * J + delta * delta));
+    if (!(h > 0)) return Infinity;
+    total += (L2 * c.sin) / (2 * h);
+  }
+  return total;
+}
+
+function cornerJacobians(corners, x) {
+  let jmin = Infinity, jabs = 0;
+  for (const c of corners) {
+    const p = c.slots[0] ? x : c.P[0];
+    const q = c.slots[1] ? x : c.P[1];
+    const r = c.slots[2] ? x : c.P[2];
+    const { J } = cornerTerms([p, q, r]);
+    if (J < jmin) jmin = J;
+    jabs += Math.abs(J);
+  }
+  return { jmin, jmean: jabs / Math.max(corners.length, 1) };
+}
+
+function optimizeNode(corners, x0, newtonIters) {
+  let meanL2 = 0;
+  for (const c of corners) {
+    const p = c.slots[0] ? x0 : c.P[0];
+    const q = c.slots[1] ? x0 : c.P[1];
+    const r = c.slots[2] ? x0 : c.P[2];
+    meanL2 += cornerTerms([p, q, r]).L2;
+  }
+  meanL2 /= Math.max(corners.length, 1);
+  let hstep = 1e-6 * Math.sqrt(meanL2 / 2);
+  let x = [x0[0], x0[1]];
+
+  const F = (xx) => {
+    const { jmin, jmean } = cornerJacobians(corners, xx);
+    // delta follows the worst corner, so the regularisation switches itself off
+    // once every corner is positive and the tangle is gone
+    const delta = jmin > 0 ? 0 : Math.sqrt(0.1 * jmean * (0.1 * jmean - jmin));
+    return objective(corners, xx, delta);
+  };
+
+  let f = F(x);
+  for (let it = 0; it < newtonIters; it++) {
+    const fxp = F([x[0] + hstep, x[1]]), fxm = F([x[0] - hstep, x[1]]);
+    const fyp = F([x[0], x[1] + hstep]), fym = F([x[0], x[1] - hstep]);
+    if (![fxp, fxm, fyp, fym].every(Number.isFinite)) { hstep *= 0.1; continue; }
+    const gx = (fxp - fxm) / (2 * hstep), gy = (fyp - fym) / (2 * hstep);
+    const hxx = (fxp - 2 * f + fxm) / (hstep * hstep);
+    const hyy = (fyp - 2 * f + fym) / (hstep * hstep);
+    const fpp = F([x[0] + hstep, x[1] + hstep]);
+    const fmm = F([x[0] - hstep, x[1] - hstep]);
+    const hxy = (fpp - fxp - fyp + 2 * f - fxm - fym + fmm) / (2 * hstep * hstep);
+    const det = hxx * hyy - hxy * hxy;
+    let dx, dy;
+    if (det > 0 && hxx > 0) {
+      dx = -(hyy * gx - hxy * gy) / det;
+      dy = -(-hxy * gx + hxx * gy) / det;
+    } else {
+      const gn = Math.hypot(gx, gy);
+      if (gn === 0) break;
+      const step = Math.sqrt(meanL2 / 2) * 0.2;
+      dx = (-gx / gn) * step; dy = (-gy / gn) * step;
+    }
+    let alpha = 1.0, improved = false;
+    for (let k = 0; k < 12; k++) {
+      const cand = [x[0] + alpha * dx, x[1] + alpha * dy];
+      const fn = F(cand);
+      if (fn < f) { x = cand; f = fn; improved = true; break; }
+      alpha *= 0.5;
+    }
+    if (!improved || Math.hypot(alpha * dx, alpha * dy) < 1e-12 * Math.sqrt(meanL2)) break;
+  }
+  return x;
+}
+
+// elements: array of arrays of node indices (any polygon size)
+// coords:   array of [x, y]
+// fixed:    array/Set of node indices that may not move
+// slide:    optional map nodeIndex -> [[ax,ay],[bx,by]] segment the node is
+//           confined to; a boundary node that is not a real corner may travel
+//           along its own edge but must not leave it
+function optimize(elements, coords, fixed, { iters = 8, newtonIters = 6, slide = null } = {}) {
+  const X = coords.map((p) => [p[0], p[1]]);
+  const pinned = fixed instanceof Set ? fixed : new Set(fixed);
+  const adjacent = new Map();          // node -> elements containing it
+  for (const el of elements) {
+    for (const node of el) {
+      if (pinned.has(node)) continue;
+      if (!adjacent.has(node)) adjacent.set(node, new Set());
+      adjacent.get(node).add(el);
+    }
+  }
+
+  for (let sweep = 0; sweep < iters; sweep++) {
+    for (const [node, els] of adjacent) {
+      const corners = [];
+      for (const el of els) {
+        const n = el.length;
+        const sin = Math.sin((Math.PI * (n - 2)) / n);
+        for (let j = 0; j < n; j++) {
+          const trio = [el[(j - 1 + n) % n], el[j], el[(j + 1) % n]];
+          corners.push({
+            P: [X[trio[0]], X[trio[1]], X[trio[2]]],
+            slots: [trio[0] === node, trio[1] === node, trio[2] === node],
+            sin,
+          });
+        }
+      }
+      if (!corners.length) continue;
+      let x = optimizeNode(corners, X[node], newtonIters);
+      if (slide && slide.has(node)) {
+        // a boundary node that is not a real corner may travel along its own
+        // edge but must not leave it
+        const [a, b] = slide.get(node);
+        const vx = b[0] - a[0], vy = b[1] - a[1];
+        const len2 = vx * vx + vy * vy;
+        if (len2 > 0) {
+          let t = ((x[0] - a[0]) * vx + (x[1] - a[1]) * vy) / len2;
+          t = Math.max(0.02, Math.min(0.98, t));
+          x = [a[0] + t * vx, a[1] + t * vy];
+        } else {
+          x = X[node];
+        }
+      }
+      X[node][0] = x[0];
+      X[node][1] = x[1];
+    }
+  }
+  return X;
+}
+
+function minQuality(elements, coords) {
+  let worst = Infinity;
+  for (const el of elements) {
+    const n = el.length;
+    const sin = Math.sin((Math.PI * (n - 2)) / n);
+    for (let i = 0; i < n; i++) {
+      const P = [coords[el[(i - 1 + n) % n]], coords[el[i]], coords[el[(i + 1) % n]]];
+      const { J, L2 } = cornerTerms(P);
+      worst = Math.min(worst, (2 * J) / L2 / sin);
+    }
+  }
+  return worst === Infinity ? 1 : worst;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { optimize, minQuality, cornerTerms };
+}
+// the single-file build concatenates the sources, so the engine finds it here
+if (typeof globalThis !== "undefined") {
+  globalThis.MeshQuestUntangle = { optimize, minQuality, cornerTerms };
+}
+// Curved boundaries in the browser, carried natively rather than discretised.
+//
+// The port of src/boundary_arcs.py. A curve is not a different problem:
+// topology never asks what shape an edge is, and the corner want at a vertex is
+// its TANGENT angle -- so a smooth arc joint reads 180 and wants degree three,
+// exactly like a flat point on a straight edge. Only two operations need to
+// know an edge is curved: inserting a vertex on it, which must land ON the arc
+// and splits it in two, and smoothing a vertex that sits on it, which walks off
+// the curve otherwise.
+//
+// Keyed by vertex PAIR rather than half-edge id, because ids do not survive the
+// edits and vertex ids do. Each entry records which endpoint the arc runs FROM,
+// so a split hands its halves to the right pairs without guessing.
+
+"use strict";
+
+function angleOf(v) { return Math.atan2(v[1], v[0]); }
+function unit(a) { return [Math.cos(a), Math.sin(a)]; }
+
+class Arc {
+  constructor(centre, radius, start, end, ccw) {
+    this.centre = [centre[0], centre[1]];
+    this.radius = radius;
+    this.start = start;
+    this.end = end;
+    this.ccw = !!ccw;
+  }
+
+  sweep() {
+    let d = (this.end - this.start) % (2 * Math.PI);
+    if (d < 0) d += 2 * Math.PI;
+    return this.ccw ? d : d - 2 * Math.PI;
+  }
+
+  point(t) {
+    const a = this.start + t * this.sweep();
+    const u = unit(a);
+    return [this.centre[0] + this.radius * u[0], this.centre[1] + this.radius * u[1]];
+  }
+
+  project(p) {
+    const off = [p[0] - this.centre[0], p[1] - this.centre[1]];
+    const n = Math.hypot(off[0], off[1]);
+    if (n < 1e-12) return this.point(0.5);
+    const sweep = this.sweep();
+    if (Math.abs(sweep) < 1e-12) return this.point(0);
+    const angle = angleOf(off);
+    let d = (angle - this.start) % (2 * Math.PI);
+    if (d < 0) d += 2 * Math.PI;
+    // A clockwise arc runs the other way round, so d belongs in (-2pi, 0].
+    // Subtracting unconditionally moves an exact 0 -- the arc's own START --
+    // to -2pi, whose fraction is 4 for a quarter turn, clamps to 1, and returns
+    // the END. Every pinned vertex on a concave arc then teleports to the far
+    // corner the moment anything projects it.
+    if (sweep < 0 && d > 0) d -= 2 * Math.PI;
+    const t = d / sweep;
+    if (t >= 0 && t <= 1) return this.point(t);
+    // Outside the span: clamp to the NEARER end, not to whichever end the
+    // parameterisation happened to run past.
+    const wrap = (x) => ((x + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    return this.point(Math.abs(wrap(angle - this.start)) <= Math.abs(wrap(angle - this.end)) ? 0 : 1);
+  }
+
+  split(t) {
+    const mid = angleOf([this.point(t)[0] - this.centre[0],
+                         this.point(t)[1] - this.centre[1]]);
+    return [new Arc(this.centre, this.radius, this.start, mid, this.ccw),
+            new Arc(this.centre, this.radius, mid, this.end, this.ccw)];
+  }
+
+  clone() { return new Arc(this.centre, this.radius, this.start, this.end, this.ccw); }
+}
+
+class BoundaryArcs {
+  constructor() { this.map = new Map(); }
+  static key(a, b) { return a <= b ? a + ":" + b : b + ":" + a; }
+  get size() { return this.map.size; }
+  get(a, b) { const e = this.map.get(BoundaryArcs.key(a, b)); return e ? e.arc : null; }
+  add(a, b, arc, startVertex) { this.map.set(BoundaryArcs.key(a, b), { arc, start: startVertex }); }
+
+  angleAt(a, b, vertex) {
+    const e = this.map.get(BoundaryArcs.key(a, b));
+    if (!e) return null;
+    return e.start === vertex ? e.arc.start : e.arc.end;
+  }
+
+  // Undo a split: deleting a vertex that was inserted ON a curve has to put the
+  // curve back. Without this the two halves stay keyed on a vertex that no
+  // longer exists and the edge that reappears is silently STRAIGHT.
+  merge(first, middle, second) {
+    const left = this.map.get(BoundaryArcs.key(first, middle));
+    const right = this.map.get(BoundaryArcs.key(middle, second));
+    if (!left || !right) {
+      this.map.delete(BoundaryArcs.key(first, middle));
+      this.map.delete(BoundaryArcs.key(middle, second));
+      return null;
+    }
+    const startAngle = this.angleAt(first, middle, first);
+    const endAngle = this.angleAt(middle, second, second);
+    const arc = left.arc;
+    this.map.delete(BoundaryArcs.key(first, middle));
+    this.map.delete(BoundaryArcs.key(middle, second));
+    const merged = new Arc(arc.centre, arc.radius, startAngle, endAngle, arc.ccw);
+    this.map.set(BoundaryArcs.key(first, second), { arc: merged, start: first });
+    return merged;
+  }
+
+  split(a, b, middle) {
+    const k = BoundaryArcs.key(a, b);
+    const e = this.map.get(k);
+    if (!e) return null;
+    this.map.delete(k);
+    const [first, second] = e.arc.split(0.5);
+    const finish = e.start === a ? b : a;
+    this.map.set(BoundaryArcs.key(e.start, middle), { arc: first, start: e.start });
+    this.map.set(BoundaryArcs.key(middle, finish), { arc: second, start: middle });
+    return e.arc.point(0.5);
+  }
+
+  clone() {
+    const out = new BoundaryArcs();
+    for (const [k, v] of this.map) out.map.set(k, { arc: v.arc.clone(), start: v.start });
+    return out;
+  }
+
+  entries() { return this.map.values(); }
+}
+
+// One arc per edge of a circle sector: helper for building the levels below.
+function arcBetween(centre, radius, startAngle, endAngle) {
+  return new Arc(centre, radius, startAngle, endAngle, true);
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { Arc, BoundaryArcs, arcBetween };
+}
+if (typeof globalThis !== "undefined") {
+  globalThis.MeshQuestArcs = { Arc, BoundaryArcs, arcBetween };
+}
+// GENERATED by utilities/export_curved_level.py -- do not edit.
+// The browser's copy of src/curved_domains.json, which is the source of truth.
+// `test/test_game/test_curved_levels.py` fails if the two drift apart.
+
+"use strict";
+
+const CURVED_DOMAINS = {
+  "Fillet plate": {
+    "points": [
+      [
+        -1.0,
+        -0.25
+      ],
+      [
+        -0.6,
+        -0.65
+      ],
+      [
+        0.6,
+        -0.65
+      ],
+      [
+        1.0,
+        -0.25
+      ],
+      [
+        1.0,
+        0.35
+      ],
+      [
+        0.8,
+        0.55
+      ],
+      [
+        -0.8,
+        0.55
+      ],
+      [
+        -1.0,
+        0.35
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          0,
+          1
+        ],
+        "start": 0,
+        "centre": [
+          -1.0,
+          -0.65
+        ],
+        "radius": 0.4000000000000001,
+        "from": 1.5707963267948966,
+        "to": 1.1102230246251565e-16,
+        "ccw": false
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          1.0,
+          -0.65
+        ],
+        "radius": 0.4000000000000001,
+        "from": 3.141592653589793,
+        "to": 1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          4,
+          5
+        ],
+        "start": 4,
+        "centre": [
+          0.8,
+          0.35
+        ],
+        "radius": 0.20000000000000004,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          -0.8,
+          0.35
+        ],
+        "radius": 0.20000000000000004,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      }
+    ],
+    "source": "geo2d.generate(263, preset='rounded')"
+  },
+  "Hook": {
+    "points": [
+      [
+        -0.4666666666666666,
+        -0.4833333333333333
+      ],
+      [
+        -0.2833333333333333,
+        -0.4833333333333333
+      ],
+      [
+        -0.09999999999999998,
+        -0.29999999999999993
+      ],
+      [
+        0.08333333333333333,
+        -0.4833333333333333
+      ],
+      [
+        0.44999999999999996,
+        -0.4833333333333333
+      ],
+      [
+        1.0,
+        0.06666666666666668
+      ],
+      [
+        0.26666666666666666,
+        0.06666666666666668
+      ],
+      [
+        0.08333333333333333,
+        0.25
+      ],
+      [
+        -0.2833333333333333,
+        0.25
+      ],
+      [
+        -0.2833333333333333,
+        0.7999999999999998
+      ],
+      [
+        -0.4666666666666666,
+        0.7999999999999998
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          1,
+          2
+        ],
+        "start": 1,
+        "centre": [
+          -0.09999999999999998,
+          -0.4833333333333333
+        ],
+        "radius": 0.18333333333333335,
+        "from": 3.141592653589793,
+        "to": 1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          -0.09999999999999998,
+          -0.4833333333333333
+        ],
+        "radius": 0.18333333333333335,
+        "from": 1.5707963267948966,
+        "to": 1.1102230246251565e-16,
+        "ccw": false
+      },
+      {
+        "edge": [
+          4,
+          5
+        ],
+        "start": 4,
+        "centre": [
+          0.44999999999999996,
+          0.06666666666666668
+        ],
+        "radius": 0.5499999999999999,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          0.08333333333333333,
+          0.06666666666666668
+        ],
+        "radius": 0.18333333333333335,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      }
+    ],
+    "source": "geo2d.generate(192, preset='rounded')"
+  },
+  "Bridge": {
+    "points": [
+      [
+        -0.9285714285714286,
+        -1.0
+      ],
+      [
+        -0.6190476190476191,
+        -1.0
+      ],
+      [
+        0.0,
+        -0.380952380952381
+      ],
+      [
+        0.6190476190476191,
+        -1.0
+      ],
+      [
+        0.9285714285714286,
+        -1.0
+      ],
+      [
+        0.9285714285714286,
+        0.8571428571428571
+      ],
+      [
+        0.6190476190476191,
+        0.8571428571428571
+      ],
+      [
+        0.30952380952380953,
+        0.5476190476190476
+      ],
+      [
+        0.30952380952380953,
+        -0.07142857142857145
+      ],
+      [
+        -0.30952380952380953,
+        -0.07142857142857145
+      ],
+      [
+        -0.30952380952380953,
+        0.5476190476190476
+      ],
+      [
+        -0.6190476190476191,
+        0.8571428571428571
+      ],
+      [
+        -0.9285714285714286,
+        0.8571428571428571
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          1,
+          2
+        ],
+        "start": 1,
+        "centre": [
+          0.0,
+          -1.0
+        ],
+        "radius": 0.6190476190476192,
+        "from": 3.141592653589793,
+        "to": 1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          0.0,
+          -1.0
+        ],
+        "radius": 0.6190476190476192,
+        "from": 1.5707963267948966,
+        "to": 1.1102230246251565e-16,
+        "ccw": false
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          0.6190476190476191,
+          0.5476190476190476
+        ],
+        "radius": 0.3095238095238096,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      },
+      {
+        "edge": [
+          10,
+          11
+        ],
+        "start": 10,
+        "centre": [
+          -0.6190476190476191,
+          0.5476190476190476
+        ],
+        "radius": 0.3095238095238096,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      }
+    ],
+    "source": "geo2d.generate(120, preset='rounded')"
+  },
+  "Clover": {
+    "points": [
+      [
+        -0.8,
+        -0.6
+      ],
+      [
+        -0.4,
+        -1.0
+      ],
+      [
+        0.0,
+        -1.0
+      ],
+      [
+        0.4,
+        -0.6
+      ],
+      [
+        0.8,
+        -0.2
+      ],
+      [
+        0.8,
+        0.2
+      ],
+      [
+        0.4,
+        0.6
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        -0.4,
+        1.0
+      ],
+      [
+        -0.8,
+        0.6
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          0,
+          1
+        ],
+        "start": 0,
+        "centre": [
+          -0.8,
+          -1.0
+        ],
+        "radius": 0.4000000000000001,
+        "from": 1.5707963267948966,
+        "to": 1.1102230246251565e-16,
+        "ccw": false
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          0.0,
+          -0.6
+        ],
+        "radius": 0.4000000000000001,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          3,
+          4
+        ],
+        "start": 3,
+        "centre": [
+          0.4,
+          -0.2
+        ],
+        "radius": 0.4000000000000001,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          5,
+          6
+        ],
+        "start": 5,
+        "centre": [
+          0.4,
+          0.2
+        ],
+        "radius": 0.4000000000000001,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          0.0,
+          0.6
+        ],
+        "radius": 0.4000000000000001,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          8,
+          9
+        ],
+        "start": 8,
+        "centre": [
+          -0.8,
+          1.0
+        ],
+        "radius": 0.4000000000000001,
+        "from": 0.0,
+        "to": -1.5707963267948966,
+        "ccw": false
+      }
+    ],
+    "source": "geo2d.generate(86, preset='rounded')"
+  },
+  "Plate with a hole": {
+    "points": [
+      [
+        -2.4,
+        -1.4
+      ],
+      [
+        2.4,
+        -1.4
+      ],
+      [
+        2.4,
+        1.4
+      ],
+      [
+        -2.4,
+        1.4
+      ],
+      [
+        0.55,
+        0.0
+      ],
+      [
+        3.367778697655222e-17,
+        0.55
+      ],
+      [
+        -0.55,
+        6.735557395310444e-17
+      ],
+      [
+        -1.0103336092965664e-16,
+        -0.55
+      ],
+      [
+        0.0,
+        -1.4
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          4,
+          5
+        ],
+        "start": 4,
+        "centre": [
+          0.0,
+          0.0
+        ],
+        "radius": 0.55,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          4,
+          7
+        ],
+        "start": 7,
+        "centre": [
+          0.0,
+          0.0
+        ],
+        "radius": 0.55,
+        "from": 4.71238898038469,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          5,
+          6
+        ],
+        "start": 5,
+        "centre": [
+          0.0,
+          0.0
+        ],
+        "radius": 0.55,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          0.0,
+          0.0
+        ],
+        "radius": 0.55,
+        "from": 3.141592653589793,
+        "to": 4.71238898038469,
+        "ccw": true
+      }
+    ],
+    "loop": [
+      0,
+      8,
+      7,
+      6,
+      5,
+      4,
+      7,
+      8,
+      1,
+      2,
+      3
+    ],
+    "source": "src.curved_levels:plate-with-hole"
+  },
+  "Snail": {
+    "points": [
+      [
+        -1.0,
+        -0.4545454545454546
+      ],
+      [
+        0.3636363636363637,
+        -0.4545454545454546
+      ],
+      [
+        0.9090909090909092,
+        0.0909090909090909
+      ],
+      [
+        0.3636363636363637,
+        0.6363636363636364
+      ],
+      [
+        -0.1818181818181818,
+        0.0909090909090909
+      ],
+      [
+        -0.45454545454545453,
+        0.0909090909090909
+      ],
+      [
+        0.6363636363636365,
+        0.0909090909090909
+      ],
+      [
+        0.3636363636363637,
+        0.36363636363636365
+      ],
+      [
+        0.09090909090909095,
+        0.0909090909090909
+      ],
+      [
+        0.3636363636363637,
+        -0.18181818181818185
+      ],
+      [
+        0.09090909090909095,
+        -0.4545454545454546
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          0,
+          5
+        ],
+        "start": 5,
+        "centre": [
+          -0.45454545454545453,
+          -0.45454545454545464
+        ],
+        "radius": 0.5454545454545456,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      },
+      {
+        "edge": [
+          1,
+          2
+        ],
+        "start": 1,
+        "centre": [
+          0.3636363636363637,
+          0.0909090909090909
+        ],
+        "radius": 0.5454545454545456,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          0.3636363636363637,
+          0.09090909090909083
+        ],
+        "radius": 0.5454545454545456,
+        "from": 1.1102230246251565e-16,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          3,
+          4
+        ],
+        "start": 3,
+        "centre": [
+          0.3636363636363637,
+          0.09090909090909083
+        ],
+        "radius": 0.5454545454545456,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 7,
+        "centre": [
+          0.3636363636363637,
+          0.0909090909090909
+        ],
+        "radius": 0.2727272727272728,
+        "from": 1.5707963267948966,
+        "to": 0.0,
+        "ccw": false
+      },
+      {
+        "edge": [
+          6,
+          9
+        ],
+        "start": 6,
+        "centre": [
+          0.3636363636363637,
+          0.0909090909090909
+        ],
+        "radius": 0.2727272727272728,
+        "from": 0.0,
+        "to": -1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          7,
+          8
+        ],
+        "start": 8,
+        "centre": [
+          0.3636363636363637,
+          0.0909090909090909
+        ],
+        "radius": 0.2727272727272728,
+        "from": 3.141592653589793,
+        "to": 1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          8,
+          9
+        ],
+        "start": 9,
+        "centre": [
+          0.3636363636363637,
+          0.0909090909090909
+        ],
+        "radius": 0.2727272727272728,
+        "from": -1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": false
+      }
+    ],
+    "loop": [
+      0,
+      10,
+      8,
+      7,
+      6,
+      9,
+      8,
+      10,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source": "geo2d.generate(139, preset='rounded')"
+  },
+  "Notched plate": {
+    "points": [
+      [
+        -1.0,
+        -0.3793103448275862
+      ],
+      [
+        -0.7241379310344828,
+        -0.6551724137931034
+      ],
+      [
+        -0.4482758620689655,
+        -0.3793103448275862
+      ],
+      [
+        0.6551724137931034,
+        -0.3793103448275862
+      ],
+      [
+        0.6551724137931034,
+        -0.10344827586206896
+      ],
+      [
+        0.9310344827586207,
+        -0.10344827586206896
+      ],
+      [
+        0.9310344827586207,
+        1.0
+      ],
+      [
+        -1.0,
+        1.0
+      ],
+      [
+        0.10344827586206896,
+        0.4482758620689655
+      ],
+      [
+        -0.1724137931034483,
+        0.7241379310344828
+      ],
+      [
+        -0.4482758620689655,
+        0.4482758620689655
+      ],
+      [
+        -0.1724137931034483,
+        0.1724137931034483
+      ],
+      [
+        -0.1724137931034483,
+        1.0
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          0,
+          1
+        ],
+        "start": 0,
+        "centre": [
+          -0.7241379310344828,
+          -0.3793103448275862
+        ],
+        "radius": 0.2758620689655173,
+        "from": 3.141592653589793,
+        "to": -1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          1,
+          2
+        ],
+        "start": 1,
+        "centre": [
+          -0.7241379310344828,
+          -0.3793103448275862
+        ],
+        "radius": 0.2758620689655173,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          8,
+          9
+        ],
+        "start": 9,
+        "centre": [
+          -0.1724137931034483,
+          0.4482758620689655
+        ],
+        "radius": 0.2758620689655173,
+        "from": 1.5707963267948966,
+        "to": 0.0,
+        "ccw": false
+      },
+      {
+        "edge": [
+          8,
+          11
+        ],
+        "start": 8,
+        "centre": [
+          -0.1724137931034483,
+          0.4482758620689655
+        ],
+        "radius": 0.2758620689655173,
+        "from": 0.0,
+        "to": -1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          9,
+          10
+        ],
+        "start": 10,
+        "centre": [
+          -0.1724137931034483,
+          0.4482758620689655
+        ],
+        "radius": 0.2758620689655173,
+        "from": 3.141592653589793,
+        "to": 1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          10,
+          11
+        ],
+        "start": 11,
+        "centre": [
+          -0.1724137931034483,
+          0.4482758620689655
+        ],
+        "radius": 0.2758620689655173,
+        "from": -1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": false
+      }
+    ],
+    "loop": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      12,
+      9,
+      8,
+      11,
+      10,
+      9,
+      12,
+      7
+    ],
+    "source": "geo2d.generate(213, preset='rounded')"
+  },
+  "Boot": {
+    "points": [
+      [
+        -0.8,
+        0.3
+      ],
+      [
+        -0.6,
+        0.1
+      ],
+      [
+        -0.6,
+        -0.1
+      ],
+      [
+        -0.4,
+        -0.3
+      ],
+      [
+        -0.6,
+        -0.5
+      ],
+      [
+        -0.6,
+        -0.7
+      ],
+      [
+        0.6,
+        -0.7
+      ],
+      [
+        1.0,
+        -0.3
+      ],
+      [
+        1.0,
+        0.5
+      ],
+      [
+        0.8,
+        0.5
+      ],
+      [
+        0.8,
+        0.1
+      ],
+      [
+        0.2,
+        0.1
+      ],
+      [
+        -0.2,
+        0.5
+      ],
+      [
+        -0.6,
+        0.5
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          0,
+          1
+        ],
+        "start": 0,
+        "centre": [
+          -0.6,
+          0.3
+        ],
+        "radius": 0.20000000000000004,
+        "from": 3.141592653589793,
+        "to": -1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          0,
+          13
+        ],
+        "start": 13,
+        "centre": [
+          -0.6,
+          0.3
+        ],
+        "radius": 0.20000000000000004,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          -0.6,
+          -0.3
+        ],
+        "radius": 0.20000000000000004,
+        "from": 1.5707963267948966,
+        "to": 0.0,
+        "ccw": false
+      },
+      {
+        "edge": [
+          3,
+          4
+        ],
+        "start": 3,
+        "centre": [
+          -0.6,
+          -0.3
+        ],
+        "radius": 0.20000000000000004,
+        "from": 0.0,
+        "to": -1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          0.6,
+          -0.3
+        ],
+        "radius": 0.4000000000000001,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          11,
+          12
+        ],
+        "start": 11,
+        "centre": [
+          0.2,
+          0.5
+        ],
+        "radius": 0.4000000000000001,
+        "from": -1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": false
+      }
+    ],
+    "source": "geo2d.generate(118, preset='rounded')"
+  },
+  "Skillet": {
+    "points": [
+      [
+        -1.0,
+        -0.27692307692307694
+      ],
+      [
+        0.4,
+        -0.27692307692307694
+      ],
+      [
+        0.4,
+        -0.676923076923077
+      ],
+      [
+        0.6,
+        -0.676923076923077
+      ],
+      [
+        0.6,
+        -0.27692307692307694
+      ],
+      [
+        1.0,
+        0.12307692307692308
+      ],
+      [
+        0.6,
+        0.5230769230769231
+      ],
+      [
+        0.4,
+        0.5230769230769231
+      ],
+      [
+        0.0,
+        0.12307692307692308
+      ],
+      [
+        -0.4,
+        0.5230769230769231
+      ],
+      [
+        -0.8,
+        0.5230769230769231
+      ],
+      [
+        -0.8,
+        -0.07692307692307691
+      ],
+      [
+        -1.0,
+        -0.07692307692307691
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          4,
+          5
+        ],
+        "start": 4,
+        "centre": [
+          0.6,
+          0.12307692307692308
+        ],
+        "radius": 0.4000000000000001,
+        "from": -1.5707963267948966,
+        "to": 0.0,
+        "ccw": true
+      },
+      {
+        "edge": [
+          5,
+          6
+        ],
+        "start": 5,
+        "centre": [
+          0.6,
+          0.12307692307692308
+        ],
+        "radius": 0.4000000000000001,
+        "from": 0.0,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          7,
+          8
+        ],
+        "start": 7,
+        "centre": [
+          0.0,
+          0.5230769230769231
+        ],
+        "radius": 0.4000000000000001,
+        "from": 0.0,
+        "to": -1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          8,
+          9
+        ],
+        "start": 8,
+        "centre": [
+          0.0,
+          0.5230769230769231
+        ],
+        "radius": 0.4000000000000001,
+        "from": -1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": false
+      }
+    ],
+    "source": "geo2d.generate(154, preset='rounded')"
+  },
+  "Tunnel": {
+    "points": [
+      [
+        -0.8888888888888888,
+        -0.3333333333333333
+      ],
+      [
+        -0.4444444444444444,
+        -0.3333333333333333
+      ],
+      [
+        0.0,
+        0.1111111111111111
+      ],
+      [
+        0.4444444444444444,
+        -0.3333333333333333
+      ],
+      [
+        0.8888888888888888,
+        -0.3333333333333333
+      ],
+      [
+        0.8888888888888888,
+        0.1111111111111111
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        -0.8888888888888888,
+        0.1111111111111111
+      ]
+    ],
+    "arcs": [
+      {
+        "edge": [
+          1,
+          2
+        ],
+        "start": 1,
+        "centre": [
+          0.0,
+          -0.33333333333333337
+        ],
+        "radius": 0.44444444444444453,
+        "from": 3.141592653589793,
+        "to": 1.5707963267948966,
+        "ccw": false
+      },
+      {
+        "edge": [
+          2,
+          3
+        ],
+        "start": 2,
+        "centre": [
+          0.0,
+          -0.33333333333333337
+        ],
+        "radius": 0.44444444444444453,
+        "from": 1.5707963267948966,
+        "to": 1.1102230246251565e-16,
+        "ccw": false
+      },
+      {
+        "edge": [
+          5,
+          6
+        ],
+        "start": 5,
+        "centre": [
+          -9.868649107779169e-17,
+          0.11111111111111101
+        ],
+        "radius": 0.8888888888888891,
+        "from": 1.1102230246251565e-16,
+        "to": 1.5707963267948966,
+        "ccw": true
+      },
+      {
+        "edge": [
+          6,
+          7
+        ],
+        "start": 6,
+        "centre": [
+          0.0,
+          0.11111111111111101
+        ],
+        "radius": 0.8888888888888891,
+        "from": 1.5707963267948966,
+        "to": 3.141592653589793,
+        "ccw": true
+      }
+    ],
+    "source": "geo2d.generate(2493, preset='rounded')"
+  }
+};
+
+if (typeof module !== "undefined" && module.exports) module.exports = CURVED_DOMAINS;
+if (typeof globalThis !== "undefined") globalThis.MeshQuestCurvedDomains = CURVED_DOMAINS;
+/* Mesh Quest — Copyright 2026 Arjun Narayanan.
+ * Licensed under the MIT License (see LICENSE).
+ * Released under the MIT License (see LICENSE).
+ */
+/* Mesh Quest engine: JavaScript port of the game subset of src/tiler.py.
+ *
+ * Faithful to the Python implementation including ID assignment order, so
+ * states can be diffed against the Python engine op-for-op. Verified by
+ * replaying identical op traces through both engines (see game/js/tests).
+ *
+ * IDs are tagged strings: h3 (half-edge), v2 (vertex), f1 (face), b0 (boundary).
+ */
+"use strict";
+
+// The element the player is cutting towards. Quads by default; `setElementTarget`
+// switches the whole engine to triangles, which changes what every corner wants
+// and what the par bound is, but nothing about the moves.
+let TARGET_ANGLE = 90;
+let FACE_DESIRED = 4;
+const QUALITY_THRESHOLD = 0.4;
+
+// numpy-style round-half-to-even (np.round); angles here are non-negative
+function roundHalfEven(x) {
+  const f = Math.floor(x);
+  const d = x - f;
+  if (d > 0.5) return f + 1;
+  if (d < 0.5) return f;
+  return f % 2 === 0 ? f : f + 1;
+}
+
+// sin of the ideal corner: 1 for quads, sin 60 for triangles. Dividing by it
+// makes the quality an element quality rather than a quad quality.
+function idealSin() {
+  return Math.sin((TARGET_ANGLE * Math.PI) / 180);
+}
+
+function desiredFromAngle(angle, target = TARGET_ANGLE) {
+  // Semicircle's 150 degree corners give exactly 2.5 at the triangle target,
+  // and atan2 lands a hair either side of it in the two implementations --
+  // enough to move a corner into the next bin and change par. Quantise away
+  // the sub-nano noise so a tie is a tie on both sides, then round half to
+  // even as numpy does.
+  return Math.max(roundHalfEven(Math.round((angle / target) * 1e9) / 1e9) + 1, 2);
+}
+
+// Every degree a corner of this angle would be content with. When a / theta
+// lands exactly on k + 1/2 the two neighbouring corner treatments are equally
+// admissible -- k elements of angle a / k, or k + 1 of a / (k+1) -- so rounding
+// picks one of them by convention, and half-to-even does not even break
+// consecutive ties the same way. Such a corner keeps both, so neither the score
+// nor par depends on which integer happens to be even.
+function desiredOptions(angle, target = TARGET_ANGLE) {
+  const ratio = Math.round((angle / target) * 1e9) / 1e9;
+  if (Math.abs(ratio - Math.floor(ratio) - 0.5) > 1e-6) {
+    return [desiredFromAngle(angle, target)];
+  }
+  const low = Math.max(Math.floor(ratio) + 1, 2);
+  const high = Math.max(Math.ceil(ratio) + 1, 2);
+  return low === high ? [low] : [low, high];
+}
+
+let INTERIOR_DESIRED = desiredFromAngle(360) - 1; // 4 for quads, 6 for triangles
+let BOUNDARY_DESIRED = desiredFromAngle(180); // 3 for quads, 4 for triangles
+
+// The element currently being cut towards. A real top-level function, not just
+// an export: the browser build concatenates these files with no module system,
+// so the UI can only see what is declared at this level.
+function elementTarget() {
+  return FACE_DESIRED;
+}
+
+// Switch the engine between quads (4) and triangles (3). Every constant below
+// is derived, so callers only ever set this one number.
+function setElementTarget(faceDesired) {
+  FACE_DESIRED = faceDesired;
+  TARGET_ANGLE = ((faceDesired - 2) * 180) / faceDesired;
+  INTERIOR_DESIRED = desiredFromAngle(360) - 1;
+  BOUNDARY_DESIRED = desiredFromAngle(180);
+}
+
+function num(id) {
+  return parseInt(id.slice(1), 10);
+}
+
+class GameError extends Error {}
+
+class Mesh {
+  constructor() {
+    this.arcs = null;   // set by a curved level; every path below no-ops without it
+    this.he = new Map(); // tagged id -> {face,next,prev,twin,source,target}
+    this.nodeType = new Map(); // tagged id -> "half_edge"|"vertex"|"face"|"boundary"
+    this.coords = new Map(); // numeric vid -> [x, y]
+    this.userVerts = new Set(); // numeric
+    this.boundaryVerts = new Set(); // numeric
+    this.vertexDeg = new Map(); // vertex id -> degree
+    this.faceDeg = new Map(); // face id -> degree
+    this.faceHE = new Map(); // face id -> Set of half-edge ids (insertion order)
+    this.nextH = 0;
+    this.nextV = 0;
+    this.nextF = 0;
+    this.nextB = 0;
+  }
+
+  static fromFaceLoops(loops, coords, userVertices = null, arcs = null) {
+    const m = new Mesh();
+    if (arcs) m.arcs = arcs;
+    const vertexIds = new Set();
+    for (const loop of loops) for (const v of loop) vertexIds.add(v);
+    const pinned = userVertices === null ? vertexIds : new Set(userVertices);
+
+    m.nextH = loops.reduce((s, l) => s + l.length, 0);
+    m.nextV = vertexIds.size;
+    m.nextF = loops.length;
+
+    for (let i = 0; i < m.nextH; i++) {
+      m.he.set("h" + i, { face: null, next: null, prev: null, twin: null, source: null, target: null });
+      m.nodeType.set("h" + i, "half_edge");
+    }
+    for (const v of vertexIds) {
+      m.nodeType.set("v" + v, "vertex");
+      m.coords.set(v, [coords[v][0], coords[v][1]]);
+      if (pinned.has(v)) m.userVerts.add(v);
+    }
+    for (let f = 0; f < m.nextF; f++) {
+      m.nodeType.set("f" + f, "face");
+      m.faceHE.set("f" + f, new Set());
+    }
+
+    // next/prev, source/target, face associations, loop by loop
+    let start = 0;
+    for (let fi = 0; fi < loops.length; fi++) {
+      const loop = loops[fi];
+      const n = loop.length;
+      for (let i = 0; i < n; i++) {
+        const h = "h" + (start + i);
+        const hn = "h" + (start + ((i + 1) % n));
+        const rec = m.he.get(h);
+        rec.next = hn;
+        m.he.get(hn).prev = h;
+        rec.source = "v" + loop[i];
+        rec.target = "v" + loop[(i + 1) % n];
+        rec.face = "f" + fi;
+        m.faceHE.get("f" + fi).add(h);
+      }
+      start += n;
+    }
+
+    // twins (iteration in half-edge id order, matching the Python dict order)
+    const pair = new Map(); // "src|dst" -> hid
+    for (let i = 0; i < m.nextH; i++) {
+      const h = "h" + i;
+      const r = m.he.get(h);
+      pair.set(r.source + "|" + r.target, h);
+    }
+    for (const [key, h] of pair) {
+      const [src, dst] = key.split("|");
+      const rev = pair.get(dst + "|" + src);
+      if (rev !== undefined) {
+        m.he.get(h).twin = rev;
+        m.he.get(rev).twin = h;
+      } else {
+        const b = "b" + m.nextB;
+        m.nextB += 1;
+        m.nodeType.set(b, "boundary");
+        m.he.set(b, { face: null, next: null, prev: null, twin: h, source: dst, target: src });
+        m.he.get(h).twin = b;
+      }
+    }
+
+    // degrees: every mesh edge is represented by two directed records
+    // (half-edge/half-edge in the interior, half-edge/boundary at the rim),
+    // so a vertex's degree is half its incidence count over all records
+    for (const v of vertexIds) m.vertexDeg.set("v" + v, 0);
+    for (const [id, type] of m.nodeType) {
+      if (type !== "half_edge" && type !== "boundary") continue;
+      const r = m.he.get(id);
+      m.vertexDeg.set(r.source, m.vertexDeg.get(r.source) + 1);
+      m.vertexDeg.set(r.target, m.vertexDeg.get(r.target) + 1);
+    }
+    for (const [v, d] of m.vertexDeg) m.vertexDeg.set(v, d / 2);
+
+    for (let f = 0; f < m.nextF; f++) m.faceDeg.set("f" + f, loops[f].length);
+
+    for (const [id, type] of m.nodeType) {
+      if (type === "half_edge" && m.onBoundary(id)) {
+        m.boundaryVerts.add(num(m.he.get(id).source));
+      }
+    }
+    return m;
+  }
+
+  clone() {
+    const m = new Mesh();
+    for (const [k, v] of this.he) m.he.set(k, { ...v });
+    for (const [k, v] of this.nodeType) m.nodeType.set(k, v);
+    for (const [k, v] of this.coords) m.coords.set(k, [v[0], v[1]]);
+    m.userVerts = new Set(this.userVerts);
+    m.boundaryVerts = new Set(this.boundaryVerts);
+    m.vertexDeg = new Map(this.vertexDeg);
+    m.faceDeg = new Map(this.faceDeg);
+    for (const [k, v] of this.faceHE) m.faceHE.set(k, new Set(v));
+    m.nextH = this.nextH; m.nextV = this.nextV; m.nextF = this.nextF; m.nextB = this.nextB;
+    // arcs travel with the copy, or undo quietly straightens the boundary
+    if (this.arcs) m.arcs = this.arcs.clone();
+    return m;
+  }
+
+  isHalfEdge(h) { return this.nodeType.get(h) === "half_edge"; }
+  isBoundaryHalfEdge(h) { return this.nodeType.get(h) === "boundary"; }
+  onBoundary(h) { return this.he.get(this.he.get(h).twin).face === null; }
+
+  halfEdgeList() {
+    const out = [];
+    for (const [id, t] of this.nodeType) if (t === "half_edge") out.push(id);
+    return out;
+  }
+  vertexList() {
+    const out = [];
+    for (const [id, t] of this.nodeType) if (t === "vertex") out.push(id);
+    return out;
+  }
+  faceList() {
+    const out = [];
+    for (const [id, t] of this.nodeType) if (t === "face") out.push(id);
+    return out;
+  }
+
+  faceLoop(h) {
+    const loop = [h];
+    let cur = this.he.get(h).next;
+    while (cur !== h) {
+      loop.push(cur);
+      cur = this.he.get(cur).next;
+    }
+    return loop;
+  }
+
+  firstFaceHalfEdge(f) {
+    for (const h of this.faceHE.get(f)) return h;
+    throw new GameError("face has no half-edges: " + f);
+  }
+
+  // --- construction helpers (ID order matches Python) ---------------------
+
+  createFace() {
+    const f = "f" + this.nextF;
+    this.nextF += 1;
+    this.nodeType.set(f, "face");
+    this.faceHE.set(f, new Set());
+    return f;
+  }
+
+  createVertex(coord, onBdry) {
+    const v = "v" + this.nextV;
+    this.nodeType.set(v, "vertex");
+    if (coord) this.coords.set(this.nextV, [coord[0], coord[1]]);
+    if (onBdry) this.boundaryVerts.add(this.nextV);
+    this.nextV += 1;
+    return v;
+  }
+
+  createHalfEdge(nextH, prevH) {
+    const nr = this.he.get(nextH);
+    const pr = this.he.get(prevH);
+    const h = "h" + this.nextH;
+    this.nextH += 1;
+    this.nodeType.set(h, "half_edge");
+    this.he.set(h, {
+      face: nr.face, next: nextH, prev: prevH,
+      twin: null, source: pr.target, target: nr.source,
+    });
+    nr.prev = h;
+    pr.next = h;
+    if (nr.face !== null) this.faceHE.get(nr.face).add(h);
+    return h;
+  }
+
+  createBoundaryHalfEdge(targetV, sourceV) {
+    const b = "b" + this.nextB;
+    this.nextB += 1;
+    this.nodeType.set(b, "boundary");
+    this.he.set(b, { face: null, next: null, prev: null, twin: null, source: sourceV, target: targetV });
+    return b;
+  }
+
+  associateTwin(a, b) {
+    this.he.get(a).twin = b;
+    this.he.get(b).twin = a;
+  }
+
+  setTargetVertex(h, v) {
+    const r = this.he.get(h);
+    const twin = this.he.get(r.twin);
+    r.target = v;
+    twin.source = v;
+  }
+
+  // --- edit operations -----------------------------------------------------
+
+  isValidEdgeInsert(h, k) {
+    if (!this.isHalfEdge(h)) return false;
+    const f = this.he.get(h).face;
+    return k >= 0 && k < this.faceDeg.get(f) - 1;
+  }
+
+  insertHalfEdge(h, k) {
+    if (!this.isValidEdgeInsert(h, k)) throw new GameError("Invalid edge insert");
+    const f = this.he.get(h).face;
+    this.faceDeg.set(f, this.faceDeg.get(f) - k);
+    const nf = this.createFace();
+    this.faceDeg.set(nf, k + 2);
+
+    let cur = h;
+    for (let c = 0; c < k + 1; c++) {
+      this.faceHE.get(f).delete(cur);
+      this.he.get(cur).face = nf;
+      this.faceHE.get(nf).add(cur);
+      cur = this.he.get(cur).next;
+    }
+
+    const newFaceNext = h;
+    const newFacePrev = this.he.get(cur).prev;
+    const oldFaceNext = cur;
+    const oldFacePrev = this.he.get(h).prev;
+
+    const srcV = this.he.get(newFacePrev).target;
+    const dstV = this.he.get(h).source;
+    this.vertexDeg.set(srcV, this.vertexDeg.get(srcV) + 1);
+    this.vertexDeg.set(dstV, this.vertexDeg.get(dstV) + 1);
+
+    const a = this.createHalfEdge(newFaceNext, newFacePrev);
+    const b = this.createHalfEdge(oldFaceNext, oldFacePrev);
+    this.associateTwin(a, b);
+  }
+
+  midpoint(v1, v2) {
+    const a = this.coords.get(num(v1));
+    const b = this.coords.get(num(v2));
+    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  }
+
+  snapToArcs() {
+    // A boundary vertex on a curve is smoothed along the CHORD between its
+    // neighbours, which walks it off the curve. Projecting afterwards keeps the
+    // invariant with the object that owns it, and is a no-op without arcs.
+    //
+    // A vertex owns TWO arcs wherever two of them meet, so take the NEAREST
+    // projection rather than each in turn: a vertex slid legitimately along one
+    // arc is outside the span of its neighbour, and projecting onto that one
+    // clamps it back to the shared joint and undoes the slide. See
+    // Tiler.snap_to_boundary_arcs for the measured damage on the Python side.
+    if (!this.arcs || this.arcs.size === 0) return;
+    const owners = new Map();
+    for (const [k, e] of this.arcs.map) {
+      const [a, b] = k.split(":").map(Number);
+      for (const v of [a, b]) {
+        if (!this.coords.has(v)) continue;
+        if (!this.boundaryVerts.has(v)) continue;
+        if (!owners.has(v)) owners.set(v, []);
+        owners.get(v).push(e.arc);
+      }
+    }
+    for (const [v, arcs] of owners) {
+      const p = this.coords.get(v);
+      let best = null, distance = Infinity;
+      for (const arc of arcs) {
+        const q = arc.project(p);
+        const gap = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        if (gap < distance) { best = q; distance = gap; }
+      }
+      this.coords.set(v, best);
+    }
+  }
+
+  insertVertex(h) {
+    if (!this.isHalfEdge(h)) throw new GameError("Unknown edge");
+    if (this.onBoundary(h)) this._insertBoundaryVertex(h);
+    else this._insertInteriorVertex(h);
+  }
+
+  _insertBoundaryVertex(h) {
+    const r = this.he.get(h);
+    const curTarget = r.target;
+    const curSource = r.source;
+    // On a curved edge the new vertex belongs ON the arc, not on the chord, or
+    // the boundary gets chipped into a polygon one insertion at a time.
+    const a = num(curSource), b = num(curTarget);
+    const arc = this.arcs ? this.arcs.get(a, b) : null;
+    const where = arc ? arc.point(0.5) : this.midpoint(curTarget, curSource);
+    const nv = this.createVertex(where, true);
+    this.vertexDeg.set(nv, 2);
+    if (arc) this.arcs.split(a, b, num(nv));
+
+    const nextH = r.next;
+    this.setTargetVertex(h, nv);
+    const nh = this.createHalfEdge(nextH, h);
+    const nb = this.createBoundaryHalfEdge(nv, curTarget);
+    this.associateTwin(nh, nb);
+    this.faceDeg.set(r.face, this.faceDeg.get(r.face) + 1);
+  }
+
+  _insertInteriorVertex(h) {
+    const r = this.he.get(h);
+    const nextH = r.next;
+    const twinH = r.twin;
+    const twinPrev = this.he.get(twinH).prev;
+
+    const curTarget = r.target;
+    const curSource = r.source;
+    const nv = this.createVertex(this.midpoint(curTarget, curSource), false);
+    this.vertexDeg.set(nv, 2);
+
+    this.setTargetVertex(h, nv);
+    const a = this.createHalfEdge(nextH, h);
+    const b = this.createHalfEdge(twinH, twinPrev);
+    this.associateTwin(a, b);
+
+    this.faceDeg.set(r.face, this.faceDeg.get(r.face) + 1);
+    const tf = this.he.get(twinH).face;
+    this.faceDeg.set(tf, this.faceDeg.get(tf) + 1);
+  }
+
+  isUserVertex(v) { return this.userVerts.has(num(v)); }
+
+  isValidDeleteSourceVertex(h) {
+    if (!this.isHalfEdge(h)) return false;
+    const v = this.he.get(h).source;
+    if (this.isUserVertex(v)) return false;
+    if (this.vertexDeg.get(v) !== 2) return false;
+    const f = this.he.get(h).face;
+    if (this.faceDeg.get(f) < 3) return false;
+    if (!this.onBoundary(h)) {
+      const tf = this.he.get(this.he.get(h).twin).face;
+      if (this.faceDeg.get(tf) < 3) return false;
+    }
+    return true;
+  }
+
+  _removeHalfEdgePair(h) {
+    const twin = this.he.get(h).twin;
+    for (const id of [h, twin]) {
+      const r = this.he.get(id);
+      if (r.face !== null && this.faceHE.has(r.face)) this.faceHE.get(r.face).delete(id);
+      this.he.delete(id);
+      this.nodeType.delete(id);
+    }
+  }
+
+  _removeVertex(v) {
+    this.nodeType.delete(v);
+    this.vertexDeg.delete(v);
+    this.coords.delete(num(v));
+    this.boundaryVerts.delete(num(v));
+  }
+
+  deleteSourceVertex(h) {
+    if (!this.isValidDeleteSourceVertex(h)) throw new GameError("Vertex not deletable");
+    if (this.onBoundary(h)) this._deleteBoundaryVertex(h);
+    else this._deleteInteriorVertex(h);
+  }
+
+  _deleteBoundaryVertex(h) {
+    const r = this.he.get(h);
+    const src = r.source;
+    const nextH = r.next;
+    const prevH = r.prev;
+    // this vertex may sit ON a curve, splitting one arc in two; put it back
+    if (this.arcs) {
+      this.arcs.merge(num(this.he.get(prevH).source), num(src), num(r.target));
+    }
+    this.setTargetVertex(prevH, r.target);
+    this.he.get(prevH).next = nextH;
+    this.he.get(nextH).prev = prevH;
+    this.faceDeg.set(r.face, this.faceDeg.get(r.face) - 1);
+    this._removeHalfEdgePair(h);
+    this._removeVertex(src);
+  }
+
+  _deleteInteriorVertex(h) {
+    const r = this.he.get(h);
+    const src = r.source;
+    const nextH = r.next;
+    const prevH = r.prev;
+    const twinH = r.twin;
+    const nextTwin = this.he.get(twinH).next;
+    const prevTwin = this.he.get(twinH).prev;
+
+    this.setTargetVertex(prevH, r.target);
+    this.he.get(prevH).next = nextH;
+    this.he.get(nextH).prev = prevH;
+    this.he.get(prevTwin).next = nextTwin;
+    this.he.get(nextTwin).prev = prevTwin;
+
+    this.faceDeg.set(r.face, this.faceDeg.get(r.face) - 1);
+    const tf = this.he.get(twinH).face;
+    this.faceDeg.set(tf, this.faceDeg.get(tf) - 1);
+
+    this._removeHalfEdgePair(h);
+    this._removeVertex(src);
+  }
+
+  isValidDeleteHalfEdge(h) {
+    if (!this.isHalfEdge(h)) return false;
+    if (this.onBoundary(h)) return false;
+    const r = this.he.get(h);
+    if (this.vertexDeg.get(r.source) <= 2 || this.vertexDeg.get(r.target) <= 2) return false;
+    const tf = this.he.get(r.twin).face;
+    if (r.face === tf) return false;
+    return true;
+  }
+
+  deleteHalfEdge(h) {
+    if (!this.isValidDeleteHalfEdge(h)) throw new GameError("This edge cannot be deleted");
+    const r = this.he.get(h);
+    const nextH = r.next;
+    const prevH = r.prev;
+    const twinH = r.twin;
+    const prevTwin = this.he.get(twinH).prev;
+    const nextTwin = this.he.get(twinH).next;
+
+    this.vertexDeg.set(r.source, this.vertexDeg.get(r.source) - 1);
+    this.vertexDeg.set(r.target, this.vertexDeg.get(r.target) - 1);
+
+    const curFace = r.face;
+    const twinFace = this.he.get(twinH).face;
+    this.faceDeg.set(curFace, this.faceDeg.get(curFace) + this.faceDeg.get(twinFace) - 2);
+
+    for (const he of Array.from(this.faceHE.get(twinFace))) {
+      this.he.get(he).face = curFace;
+      this.faceHE.get(curFace).add(he);
+    }
+    this.nodeType.delete(twinFace);
+    this.faceHE.delete(twinFace);
+    this.faceDeg.delete(twinFace);
+
+    this.he.get(prevH).next = nextTwin;
+    this.he.get(nextTwin).prev = prevH;
+    this.he.get(prevTwin).next = nextH;
+    this.he.get(nextH).prev = prevTwin;
+    this._removeHalfEdgePair(h);
+  }
+
+  // --- geometry -----------------------------------------------------------
+
+  halfEdgeAngles() {
+    const out = new Map();
+    for (const [id, t] of this.nodeType) {
+      if (t !== "half_edge") continue;
+      const r = this.he.get(id);
+      const c = this.coords.get(num(r.source));
+      const n = this.coords.get(num(r.target));
+      const p = this.coords.get(num(this.he.get(r.prev).source));
+      const v1 = [n[0] - c[0], n[1] - c[1]];
+      const v2 = [p[0] - c[0], p[1] - c[1]];
+      const dot = v1[0] * v2[0] + v1[1] * v2[1];
+      const det = v1[0] * v2[1] - v1[1] * v2[0];
+      let ang = (Math.atan2(det, dot) * 180) / Math.PI;
+      if (ang < 0) ang += 360;
+      out.set(id, ang);
+    }
+    return out;
+  }
+
+  // Simultaneous untangling and smoothing (game/js/untangle.js), the same
+  // optimiser the environment's evaluator runs. The Laplacian below cannot open
+  // a folded element -- it sits at its own fixed point -- so a board that is
+  // topologically perfect can stay unwinnable for a reason the player cannot
+  // act on. This is what the win test should be measuring.
+  untangle(iters = 8) {
+    const U = (typeof require !== "undefined" && typeof module !== "undefined")
+      ? require("./untangle.js")
+      : (typeof MeshQuestUntangle !== "undefined" ? MeshQuestUntangle : null);
+    if (!U) { this.smooth(iters); return; }
+    const verts = this.vertexList().map(num);
+    const idx = new Map(verts.map((v, i) => [v, i]));
+    const coords = verts.map((v) => {
+      const c = this.coords.get(v);
+      return [c[0], c[1]];
+    });
+    const elements = [];
+    for (const f of this.faceList()) {
+      elements.push(this.faceLoop(this.firstFaceHalfEdge(f))
+        .map((h) => idx.get(num(this.he.get(h).source))));
+    }
+    // pinned: the domain's real corners. An unpinned BOUNDARY vertex may only
+    // travel along the outline, so it is confined to the segment between its
+    // two boundary neighbours rather than set free into the interior.
+    const fixed = [], slide = new Map();
+    for (const v of verts) {
+      if (this.userVerts.has(v)) { fixed.push(idx.get(v)); continue; }
+      if (!this.boundaryVerts.has(v)) continue;
+      const nbrs = [];
+      for (const [id, t] of this.nodeType) {
+        if (t !== "half_edge" || !this.onBoundary(id)) continue;
+        const r = this.he.get(id);
+        if (num(r.source) === v) nbrs.push(idx.get(num(r.target)));
+        else if (num(r.target) === v) nbrs.push(idx.get(num(r.source)));
+      }
+      if (nbrs.length >= 2) slide.set(idx.get(v), [coords[nbrs[0]], coords[nbrs[1]]]);
+      else fixed.push(idx.get(v));
+    }
+    const out = U.optimize(elements, coords, fixed, { iters, slide });
+    const before = this.minCornerQuality();
+    const restore = verts.map((v) => { const c = this.coords.get(v); return [c[0], c[1]]; });
+    verts.forEach((v, i) => this.coords.set(v, [out[i][0], out[i][1]]));
+    // The slide constraint above confines a boundary vertex to the CHORD
+    // between its neighbours, which on a curved level pulls it off the outline
+    // and into the domain. Project it back, exactly as smooth() does.
+    this.snapToArcs();
+    // A local optimiser started inside a tangle can come out worse than it went
+    // in, and on a degenerate board it does. geo2d's `resmooth_mesh` keeps its
+    // own result only when it improved; without the same guard, pressing Smooth
+    // can make the board worse, which is never what the player asked for.
+    if (this.minCornerQuality() < before) {
+      verts.forEach((v, i) => this.coords.set(v, restore[i]));
+    }
+  }
+
+  // The worst corner on the board, on the same angle-based scale the win test
+  // uses. `Game.serialize` reports this number; `untangle` needs it to decide
+  // whether to keep what the optimiser handed back.
+  minCornerQuality() {
+    let worst = 1;
+    for (const [, a] of this.halfEdgeAngles()) {
+      worst = Math.min(worst, Math.sin((a * Math.PI) / 180) / idealSin());
+    }
+    return worst;
+  }
+
+  smooth(numIter) {
+    // mirrors Tiler.smooth_vertices: fixed 0/1 neighbor structure, then
+    // numIter rounds of averaging with per-vertex divisors
+    const verts = this.vertexList().map(num);
+    const idx = new Map(verts.map((v, i) => [v, i]));
+    const nbrs = verts.map(() => []);
+
+    for (const [id, t] of this.nodeType) {
+      if (t !== "half_edge") continue;
+      const r = this.he.get(id);
+      const s = num(r.source);
+      const d = num(r.target);
+      if (this.onBoundary(id)) {
+        if (!this.userVerts.has(s)) nbrs[idx.get(s)].push(idx.get(d));
+        if (!this.userVerts.has(d)) nbrs[idx.get(d)].push(idx.get(s));
+      } else if (!this.boundaryVerts.has(s) && !this.userVerts.has(s)) {
+        nbrs[idx.get(s)].push(idx.get(d));
+      }
+    }
+
+    const div = verts.map((v) => {
+      if (this.userVerts.has(v)) return 1;
+      if (this.boundaryVerts.has(v)) return 2;
+      return this.vertexDeg.get("v" + v);
+    });
+
+    let cur = verts.map((v) => {
+      const c = this.coords.get(v);
+      return [c[0], c[1]];
+    });
+    for (let it = 0; it < numIter; it++) {
+      const next = verts.map((v, i) => {
+        if (this.userVerts.has(v)) return [cur[i][0], cur[i][1]];
+        let x = 0, y = 0;
+        for (const j of nbrs[i]) { x += cur[j][0]; y += cur[j][1]; }
+        return [x / div[i], y / div[i]];
+      });
+      cur = next;
+    }
+    verts.forEach((v, i) => this.coords.set(v, cur[i]));
+    this.snapToArcs();
+  }
+}
+
+// --- shapes -----------------------------------------------------------------
+
+function regularPolygon(n, phase = 0) {
+  const pts = [];
+  for (let k = 0; k < n; k++) {
+    const a = phase + (2 * Math.PI * k) / n;
+    pts.push([Math.cos(a), Math.sin(a)]);
+  }
+  return pts;
+}
+
+function starPolygon() {
+  const inner = Math.cos((72 * Math.PI) / 180) / Math.cos((36 * Math.PI) / 180);
+  const pts = [];
+  for (let k = 0; k < 5; k++) {
+    const tip = ((90 + 72 * k) * Math.PI) / 180;
+    const notch = ((126 + 72 * k) * Math.PI) / 180;
+    pts.push([Math.cos(tip), Math.sin(tip)]);
+    pts.push([inner * Math.cos(notch), inner * Math.sin(notch)]);
+  }
+  return pts;
+}
+
+function semicirclePolygon() {
+  const pts = [[-1, 0], [1, 0]];
+  for (let k = 1; k <= 5; k++) {
+    const t = (30 * k * Math.PI) / 180;
+    pts.push([Math.cos(t), Math.sin(t)]);
+  }
+  return pts;
+}
+
+function pacmanPolygon() {
+  const pts = [[0, 0]];
+  for (let k = 0; k < 7; k++) {
+    const t = ((45 + 45 * k) * Math.PI) / 180;
+    pts.push([Math.cos(t), Math.sin(t)]);
+  }
+  return pts;
+}
+
+function gearPolygon(teeth = 6, outer = 1.0, root = 0.62) {
+  const pts = [];
+  const w = (2 * Math.PI) / teeth;
+  for (let k = 0; k < teeth; k++) {
+    const base = w * k;
+    for (const [frac, rad] of [[0.05, outer], [0.45, outer], [0.55, root], [0.95, root]]) {
+      const t = base + frac * w;
+      pts.push([rad * Math.cos(t), rad * Math.sin(t)]);
+    }
+  }
+  return pts;
+}
+
+// Both rings put the hole-to-rim slit between two mid-edge points, which want
+// degree 3 and are already satisfied by the slit: it belongs to a perfect mesh
+// and never has to be deleted.
+function triforceRing() {
+  const coords = {};
+  for (let k = 0; k < 3; k++) {
+    const t = ((90 + 120 * k) * Math.PI) / 180;
+    coords[k] = [Math.cos(t), Math.sin(t)];
+    coords[k + 3] = [0.4 * Math.cos(t), 0.4 * Math.sin(t)];
+  }
+  coords[6] = [(coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2];
+  coords[7] = [(coords[3][0] + coords[4][0]) / 2, (coords[3][1] + coords[4][1]) / 2];
+  const loop = [0, 6, 7, 3, 5, 4, 7, 6, 1, 2];
+  return { loops: [loop], coords, desired: desiredFromLoop(loop, coords),
+           userVertices: pinnedVertices(loop, coords) };
+}
+
+function interiorAngles(loop, coords) {
+  const n = loop.length;
+  const out = {};
+  for (let i = 0; i < n; i++) {
+    const c = coords[loop[i]];
+    const p = coords[loop[(i - 1 + n) % n]];
+    const nx = coords[loop[(i + 1) % n]];
+    const v1 = [nx[0] - c[0], nx[1] - c[1]];
+    const v2 = [p[0] - c[0], p[1] - c[1]];
+    const dot = v1[0] * v2[0] + v1[1] * v2[1];
+    const det = v1[0] * v2[1] - v1[1] * v2[0];
+    let ang = (Math.atan2(det, dot) * 180) / Math.PI;
+    if (ang < 0) ang += 360;
+    out[loop[i]] = ang;
+  }
+  return out;
+}
+
+function summedInteriorAngles(loop, coords) {
+  const n = loop.length;
+  const out = {};
+  for (let i = 0; i < n; i++) {
+    const c = coords[loop[i]];
+    const p = coords[loop[(i - 1 + n) % n]];
+    const nx = coords[loop[(i + 1) % n]];
+    const v1 = [nx[0] - c[0], nx[1] - c[1]];
+    const v2 = [p[0] - c[0], p[1] - c[1]];
+    const dot = v1[0] * v2[0] + v1[1] * v2[1];
+    const det = v1[0] * v2[1] - v1[1] * v2[0];
+    let ang = (Math.atan2(det, dot) * 180) / Math.PI;
+    if (ang < 0) ang += 360;
+    out[loop[i]] = (out[loop[i]] || 0) + ang;
+  }
+  return out;
+}
+
+// A slit outline visits its two endpoints twice, so the domain's total angle
+// there is the sum of both corners. Deriving the desired degrees this way
+// instead of hardcoding them is what lets these shapes be re-targeted; it
+// reproduces the hand-written numbers exactly at 90 degrees.
+function slitSupportVertices(loop, coords) {
+  // A hole is cut open along a zero-width slit, so the loop visits each anchor
+  // twice. An anchor on a real corner shapes the domain and stays pinned; one
+  // dropped mid-edge is bookkeeping, sums to a straight 180 degrees, and
+  // pinning it stops the smoother ever opening the slit.
+  const counts = new Map();
+  for (const v of loop) counts.set(v, (counts.get(v) || 0) + 1);
+  const angles = summedInteriorAngles(loop, coords);
+  const support = new Set();
+  for (const [v, n] of counts) {
+    if (n < 2) continue;
+    if (Math.abs(angles[v] - 180) < 1e-6) support.add(v);
+  }
+  return support;
+}
+
+function pinnedVertices(loop, coords) {
+  const support = slitSupportVertices(loop, coords);
+  return new Set(loop.filter((v) => !support.has(v)));
+}
+
+function desiredFromLoop(loop, coords) {
+  const angles = summedInteriorAngles(loop, coords);
+  const desired = {};
+  for (const v of Object.keys(angles)) desired[v] = desiredFromAngle(angles[v]);
+  return desired;
+}
+
+function simplePolygon(pts) {
+  return () => {
+    const coords = {};
+    pts.forEach((p, i) => (coords[i] = [p[0], p[1]]));
+    const loop = pts.map((_, i) => i);
+    const angles = interiorAngles(loop, coords);
+    const desired = {};
+    for (const v of loop) desired[v] = desiredFromAngle(angles[v]);
+    return { loops: [loop], coords, desired };
+  };
+}
+
+function squareHole() {
+  const coords = {
+    0: [0, 0], 1: [0.5, 0], 2: [0.5, 0.25], 3: [0.25, 0.25], 4: [0.25, 0.75],
+    5: [0.75, 0.75], 6: [0.75, 0.25], 7: [1, 0], 8: [1, 1], 9: [0, 1],
+  };
+  const loop = [0, 1, 2, 3, 4, 5, 6, 2, 1, 7, 8, 9];
+  return { loops: [loop], coords, desired: desiredFromLoop(loop, coords),
+           userVertices: pinnedVertices(loop, coords) };
+}
+
+function diamondBracket() {
+  // straight-holes #18 of the geogen held-out set: a slotted plate with a diamond
+  // hole, par 0. The slit drops from the hole's bottom corner (270 degrees, wants
+  // four) straight down to a flat point on the base edge (180 degrees, wants three).
+  const coords = {
+    0: [0, 0], 1: [8, 0], 2: [8, 4], 3: [7, 4], 4: [7, 1], 5: [6, 1],
+    6: [6, 4], 7: [2, 4], 8: [2, 1], 9: [1, 1], 10: [1, 4], 11: [0, 4],
+    12: [5, 2], 13: [4, 3], 14: [3, 2], 15: [4, 1], 16: [4, 0],
+  };
+  const loop = [0, 16, 15, 14, 13, 12, 15, 16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  return { loops: [loop], coords, desired: desiredFromLoop(loop, coords),
+           userVertices: pinnedVertices(loop, coords) };
+}
+
+function diamondInSquare() {
+  // The primitive the diamond levels share: topologically this IS `Square hole`
+  // -- four convex outer corners wanting two, four re-entrant hole corners
+  // wanting four, par 0 -- with the hole turned forty-five degrees, so every
+  // edge between hole and plate runs at a slant. Scoring is topological, so any
+  // extra difficulty here is geometry, which makes it a control on `Square hole`.
+  const coords = {
+    0: [0, 0], 1: [4, 0], 2: [4, 2], 3: [2, 4], 4: [4, 6], 5: [6, 4],
+    6: [8, 0], 7: [8, 8], 8: [0, 8],
+  };
+  const loop = [0, 1, 2, 3, 4, 5, 2, 1, 6, 7, 8];
+  return { loops: [loop], coords, desired: desiredFromLoop(loop, coords),
+           userVertices: pinnedVertices(loop, coords) };
+}
+
+function diamondTab() {
+  // straight-holes #5 of the geogen held-out set, par 0. The slit is the SHORTEST
+  // perpendicular cut: one unit right from the hole's right corner to the wall.
+  // The thin tab on the left sits at the hole's height, so a longer cut that way
+  // may suit the domain better -- shortest and best are not the same thing.
+  const coords = {
+    0: [0, 2], 1: [2, 2], 2: [2, 0], 3: [7, 0], 4: [7, 5], 5: [2, 5],
+    6: [2, 3], 7: [0, 3], 8: [6, 3], 9: [5, 4], 10: [4, 3], 11: [5, 2],
+    12: [7, 3],
+  };
+  const loop = [0, 1, 2, 3, 12, 8, 11, 10, 9, 8, 12, 4, 5, 6, 7];
+  return { loops: [loop], coords, desired: desiredFromLoop(loop, coords),
+           userVertices: pinnedVertices(loop, coords) };
+}
+
+// --- curved levels ----------------------------------------------------------
+// Carried natively: one vertex per control point, arcs recorded alongside. The
+// corner want comes from the TANGENT, so the apex of a semicircle reads 180 and
+// wants three exactly like a flat point, while each end of the diameter reads
+// 90 and wants two.
+
+function arcsFrom(list) {
+  const A = (typeof require !== "undefined" && typeof module !== "undefined")
+    ? require("./arcs.js")
+    : globalThis.MeshQuestArcs;
+  const out = new A.BoundaryArcs();
+  for (const [a, b, centre, radius, start, end] of list) {
+    out.add(a, b, new A.Arc(centre, radius, start, end, true), a);
+  }
+  return out;
+}
+
+// The direction the material leaves `u` along the edge to `w`. On a straight
+// edge that is the chord; on an arc it is the TANGENT, which is the whole point
+// -- the apex of a semicircle is a smooth point and wants three, while the
+// chord would read it as a sharp corner. Mirrors `_tangent_angles` in
+// src/curved_levels.py, and is used only for what a corner WANTS. Live angles
+// and the quality metric stay on chords, as Tiler.half_edge_angles does.
+function edgeDirection(arcs, at, u, w) {
+  const arc = arcs && arcs.get(u, w);
+  if (!arc) return [at(w)[0] - at(u)[0], at(w)[1] - at(u)[1]];
+  // exactly the tangent: on a circle it is the radius turned a quarter turn,
+  // in the direction the arc is travelled. Mirrors src/boundary_arcs.py.
+  const head = arc.point(0);
+  const atStart = Math.hypot(head[0] - at(u)[0], head[1] - at(u)[1]) < 1e-9;
+  const p = arc.point(atStart ? 0 : 1);
+  const rx = p[0] - arc.centre[0], ry = p[1] - arc.centre[1];
+  const turn = arc.sweep() < 0 ? -1 : 1;
+  const sign = (atStart ? 1 : -1) * turn;
+  return [-ry * sign, rx * sign];
+}
+
+function curvedDesired(loop, coords, arcs) {
+  const n = loop.length;
+  const at = (k) => coords[k];
+  // SUM over positions, never overwrite: a hole is carried as a slit, so the
+  // loop revisits each slit endpoint and the material angle there is the two
+  // visits added together. Matches `corner_angles` in src/boundary_arcs.py.
+  const total = {};
+  for (let i = 0; i < n; i++) {
+    const v = loop[i], prev = loop[(i - 1 + n) % n], next = loop[(i + 1) % n];
+    total[v] = (total[v] || 0) + angleBetweenVectors(
+      edgeDirection(arcs, at, v, next), edgeDirection(arcs, at, v, prev));
+  }
+  const desired = {};
+  for (const v of Object.keys(total)) desired[v] = desiredFromAngle(total[v]);
+  return desired;
+}
+
+function angleBetweenVectors(a, b) {
+  let d = Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0]);
+  while (d < 0) d += 2 * Math.PI;
+  return (d * 180) / Math.PI;
+}
+
+// The frozen geo2d domains (src/curved_domains.json). These are the curved
+// levels that are actually HARD: realistic many-sided outlines the agent fails
+// on, where Semicircle and Stadium fall to one or two moves.
+function curvedDomains() {
+  return (typeof require !== "undefined" && typeof module !== "undefined")
+    ? require("./curved_domains.js")
+    : globalThis.MeshQuestCurvedDomains;
+}
+
+function frozenCurved(name) {
+  return function () {
+    const spec = curvedDomains()[name];
+    const coords = {};
+    spec.points.forEach((p, i) => { coords[i] = [p[0], p[1]]; });
+    // a domain with a hole is cut open by a slit, so its loop revisits the two
+    // slit endpoints rather than being range(n)
+    const loop = spec.loop ? spec.loop.slice() : spec.points.map((_, i) => i);
+    const A = (typeof require !== "undefined" && typeof module !== "undefined")
+      ? require("./arcs.js") : globalThis.MeshQuestArcs;
+    const arcs = new A.BoundaryArcs();
+    for (const e of spec.arcs) {
+      arcs.add(e.edge[0], e.edge[1],
+               new A.Arc(e.centre, e.radius, e.from, e.to, e.ccw), e.start);
+    }
+    return { loops: [loop], coords, desired: curvedDesired(loop, coords, arcs), arcs };
+  };
+}
+
+function semicircleCurved() {
+  const coords = { 0: [-1, 0], 1: [1, 0], 2: [0, 1] };
+  const loop = [0, 1, 2];
+  const arcs = arcsFrom([[1, 2, [0, 0], 1, 0, Math.PI / 2],
+                         [2, 0, [0, 0], 1, Math.PI / 2, Math.PI]]);
+  return { loops: [loop], coords, desired: curvedDesired(loop, coords, arcs), arcs };
+}
+
+function stadiumCurved() {
+  const coords = { 0: [-1, -1], 1: [1, -1], 2: [2, 0], 3: [1, 1], 4: [-1, 1], 5: [-2, 0] };
+  const loop = [0, 1, 2, 3, 4, 5];
+  const arcs = arcsFrom([
+    [1, 2, [1, 0], 1, -Math.PI / 2, 0],
+    [2, 3, [1, 0], 1, 0, Math.PI / 2],
+    [4, 5, [-1, 0], 1, Math.PI / 2, Math.PI],
+    [5, 0, [-1, 0], 1, Math.PI, (3 * Math.PI) / 2],
+  ]);
+  return { loops: [loop], coords, desired: curvedDesired(loop, coords, arcs), arcs };
+}
+
+function quarterDiscCurved() {
+  const coords = { 0: [0, 0], 1: [1, 0], 2: [0, 1] };
+  const loop = [0, 1, 2];
+  const arcs = arcsFrom([[1, 2, [0, 0], 1, 0, Math.PI / 2]]);
+  return { loops: [loop], coords, desired: curvedDesired(loop, coords, arcs), arcs };
+}
+
+const SHAPES = {
+  "L-shape": simplePolygon([[0, 0], [2, 0], [2, 1], [1, 1], [1, 2], [0, 2]]),
+  "T-bracket": simplePolygon([[1, 0], [2, 0], [2, 2], [3, 2], [3, 3], [0, 3], [0, 2], [1, 2]]),
+  "I-bracket": simplePolygon([[0, 0], [3, 0], [3, 1], [2, 1], [2, 2], [3, 2], [3, 3], [0, 3], [0, 2], [1, 2], [1, 1], [0, 1]]),
+  "U-channel": simplePolygon([[0, 0], [3, 0], [3, 2], [2, 2], [2, 1], [1, 1], [1, 2], [0, 2]]),
+  "Z-shape": simplePolygon([[0, 0], [2, 0], [2, 1], [3, 1], [3, 2], [1, 2], [1, 1], [0, 1]]),
+  "Plus": simplePolygon([[1, 0], [2, 0], [2, 1], [3, 1], [3, 2], [2, 2], [2, 3], [1, 3], [1, 2], [0, 2], [0, 1], [1, 1]]),
+  "Staircase": simplePolygon([[0, 0], [3, 0], [3, 1], [2, 1], [2, 2], [1, 2], [1, 3], [0, 3]]),
+  "Triangle": simplePolygon([[0, 0], [1, 0], [0.5, Math.sin(Math.PI / 3)]]),
+  "Pentagon": simplePolygon(regularPolygon(5, Math.PI / 2)),
+  "Semicircle": simplePolygon(semicirclePolygon()),
+  "Pac-Man": simplePolygon(pacmanPolygon()),
+  "Star": simplePolygon(starPolygon()),
+  "Square hole": squareHole,
+  "Triforce ring": triforceRing,
+  "Gear": simplePolygon(gearPolygon()),
+  "Diamond bracket": diamondBracket,
+  "Diamond tab": diamondTab,
+  "Diamond in square": diamondInSquare,
+  "Plate with a hole": frozenCurved("Plate with a hole"),
+  "Notched plate": frozenCurved("Notched plate"),
+  "Snail": frozenCurved("Snail"),
+  "Tunnel": frozenCurved("Tunnel"),
+  "Fillet plate": frozenCurved("Fillet plate"),
+  "Hook": frozenCurved("Hook"),
+  "Bridge": frozenCurved("Bridge"),
+  "Clover": frozenCurved("Clover"),
+  "Boot": frozenCurved("Boot"),
+  "Skillet": frozenCurved("Skillet"),
+};
+
+// --- game -------------------------------------------------------------------
+
+class Game {
+  constructor(shape = "L-shape", storage = null) {
+    this.storage = storage; // {get(shape), set(shape, moves)} or null
+    this.reset(shape);
+  }
+
+  reset(shape) {
+    shape = shape || this.shape;
+    if (!SHAPES[shape]) throw new GameError("Unknown shape: " + shape);
+    const shape_ = SHAPES[shape]();
+    const { loops, coords, desired } = shape_;
+    this.shape = shape;
+    this.mesh = Mesh.fromFaceLoops(loops, coords, shape_.userVertices || null,
+                                   shape_.arcs || null);
+    this.initialDesired = {};
+    for (const k of Object.keys(desired)) this.initialDesired[k] = desired[k];
+    this.desiredSets = this._computeDesiredSets();
+    this.undoStack = [];
+    this.moves = 0;
+    this.recordJustSet = false;
+    this.par = this._computePar();
+  }
+
+  desiredDegree(vid) {
+    if (vid in this.initialDesired) return this.initialDesired[vid];
+    return this.mesh.boundaryVerts.has(vid) ? BOUNDARY_DESIRED : INTERIOR_DESIRED;
+  }
+
+  // The start state is the raw outline: one face, so a half-edge's angle is its
+  // source corner's interior angle, summed where a slit revisits it.
+  _computeDesiredSets() {
+    const m = this.mesh;
+    const at = (v) => m.coords.get(v);   // m.coords is keyed by the bare id
+    const total = new Map();
+    for (const h of m.halfEdgeList()) {
+      const v = num(m.he.get(h).source);
+      const prev = num(m.he.get(m.he.get(h).prev).source);
+      const next = num(m.he.get(h).target);
+      const a = angleBetweenVectors(edgeDirection(m.arcs, at, v, next),
+                                    edgeDirection(m.arcs, at, v, prev));
+      total.set(v, (total.get(v) || 0) + a);
+    }
+    const sets = {};
+    for (const [v, angle] of total) {
+      if (v in this.initialDesired) sets[v] = desiredOptions(angle);
+    }
+    return sets;
+  }
+
+  desiredDegrees(vid) {
+    return this.desiredSets[vid] || [this.desiredDegree(vid)];
+  }
+
+  vertexDefect(vid) {
+    const degree = this.mesh.vertexDeg.get("v" + vid);
+    return Math.min(...this.desiredDegrees(vid).map(want => Math.abs(degree - want)));
+  }
+
+  _computePar() {
+    const m = this.mesh;
+    // the two options at a tie always differ by one, so taking `t` of them high
+    // shifts the excess by exactly `t`: par is a scan over `t`
+    let cornerExcess = 0;
+    let numTies = 0;
+    for (const v of m.vertexList()) {
+      const vid = num(v);
+      const generic = m.boundaryVerts.has(vid) ? BOUNDARY_DESIRED : INTERIOR_DESIRED;
+      const options = this.desiredDegrees(vid);
+      cornerExcess += Math.min(...options) - generic;
+      numTies += options.length - 1;
+    }
+    let numEdges = 0;
+    const seen = new Set();
+    for (const h of m.halfEdgeList()) {
+      if (seen.has(h)) continue;
+      seen.add(h);
+      seen.add(m.he.get(h).twin);
+      numEdges += 1;
+    }
+    const chi = m.vertexList().length - numEdges + m.faceList().length;
+    // For a mesh of d-gons, sum_v (generic - degree) = 2*d*chi/(d-2), which is
+    // the interior vertex's generic degree: 4 for quads, 6 for triangles.
+    const base = cornerExcess + INTERIOR_DESIRED * chi;
+    let par = Math.abs(base);
+    for (let taken = 1; taken <= numTies; taken++) {
+      par = Math.min(par, Math.abs(base + taken));
+    }
+    return par;
+  }
+
+  resolveChord(a, b) {
+    const m = this.mesh;
+    for (const f of m.faceList()) {
+      const loop = m.faceLoop(m.firstFaceHalfEdge(f));
+      const srcs = loop.map((h) => num(m.he.get(h).source));
+      const n = loop.length;
+      for (let i = 0; i < n; i++) {
+        if (srcs[i] !== a) continue;
+        for (let k = 0; k < n - 1; k++) {
+          if (srcs[(i + k + 1) % n] === b && m.isValidEdgeInsert(loop[i], k)) {
+            return [loop[i], k];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  deleteCandidate(vid) {
+    const m = this.mesh;
+    const v = "v" + vid;
+    for (const [id, t] of m.nodeType) {
+      if (t !== "half_edge") continue;
+      if (m.he.get(id).source === v && m.isValidDeleteSourceVertex(id)) return id;
+    }
+    return null;
+  }
+
+  applyOp(op, params, smoothAfter = false) {
+    const snapshot = this.mesh.clone();
+    try {
+      if (op === "insert_vertex") {
+        const h = "h" + params.edge;
+        if (!this.mesh.isHalfEdge(h)) throw new GameError("Unknown edge");
+        this.mesh.insertVertex(h);
+      } else if (op === "delete_edge") {
+        const h = "h" + params.edge;
+        this.mesh.deleteHalfEdge(h);
+      } else if (op === "delete_vertex") {
+        const h = this.deleteCandidate(params.vertex);
+        if (h === null) {
+          throw new GameError("Vertex not deletable: must be degree 2 and not an original corner");
+        }
+        this.mesh.deleteSourceVertex(h);
+      } else if (op === "insert_edge") {
+        const chord = this.resolveChord(params.a, params.b) || this.resolveChord(params.b, params.a);
+        if (chord === null) throw new GameError("Vertices must lie on the same face");
+        this.mesh.insertHalfEdge(chord[0], chord[1]);
+      } else {
+        throw new GameError("Unknown operation: " + op);
+      }
+      if (smoothAfter) this.mesh.smooth(2);
+    } catch (e) {
+      this.mesh = snapshot;
+      throw e;
+    }
+    this.undoStack.push(snapshot);
+    this.moves += 1;
+    this.recordJustSet = false;
+    this._checkRecord();
+  }
+
+  smooth(numIter = 3) {
+    this.undoStack.push(this.mesh.clone());
+    // the untangler, with the Laplacian as its own warm start: from the raw
+    // midpoint layout a local optimiser can begin inside a tangle it cannot
+    // escape, which is the same warm start the evaluator uses
+    this.mesh.smooth(numIter);
+    this.mesh.untangle(8);
+    this.recordJustSet = false;
+    this._checkRecord();
+  }
+
+  undo() {
+    if (!this.undoStack.length) throw new GameError("Nothing to undo");
+    this.mesh = this.undoStack.pop();
+    this.moves = Math.max(0, this.moves - 1);
+    this.recordJustSet = false;
+  }
+
+  // Every board this game has passed through, oldest first. The undo stack
+  // already holds a clone from before each move, so it doubles as a replay —
+  // and because undo pops it, this is the path the player actually kept.
+  history() {
+    const live = this.mesh;
+    const frames = [];
+    try {
+      for (const snapshot of this.undoStack) {
+        this.mesh = snapshot;
+        frames.push({ ...this.serialize(), moves: frames.length });
+      }
+    } finally {
+      this.mesh = live;
+    }
+    frames.push({ ...this.serialize(), moves: frames.length });
+    return frames;
+  }
+
+  _currentScores() {
+    const m = this.mesh;
+    let vertexScore = 0;
+    for (const v of m.vertexList()) vertexScore += this.vertexDefect(num(v));
+    let faceScore = 0;
+    for (const f of m.faceList()) faceScore += Math.abs(m.faceDeg.get(f) - FACE_DESIRED);
+    let minQ = 1;
+    for (const a of m.halfEdgeAngles().values()) {
+      minQ = Math.min(minQ, Math.sin((a * Math.PI) / 180) / idealSin());
+    }
+    return [vertexScore, faceScore, minQ];
+  }
+
+  _checkRecord() {
+    const [vs, fs, mq] = this._currentScores();
+    const won = vs === this.par && fs === 0 && mq >= QUALITY_THRESHOLD;
+    if (!won || !this.storage) return;
+    const best = this.storage.get(this.shape);
+    if (best == null || this.moves < best) {
+      this.storage.set(this.shape, this.moves);
+      this.recordJustSet = true;
+    }
+  }
+
+  serialize() {
+    const m = this.mesh;
+    const angles = m.halfEdgeAngles();
+    const cornerQ = new Map();
+    for (const [h, a] of angles) cornerQ.set(h, Math.sin((a * Math.PI) / 180) / idealSin());
+    const vertexQ = new Map();
+    const faceQ = new Map();
+    let minQuality = 1;
+    for (const [h, q] of cornerQ) {
+      const v = num(m.he.get(h).source);
+      const f = num(m.he.get(h).face);
+      vertexQ.set(v, Math.min(q, vertexQ.has(v) ? vertexQ.get(v) : 1));
+      faceQ.set(f, Math.min(q, faceQ.has(f) ? faceQ.get(f) : 1));
+      minQuality = Math.min(minQuality, q);
+    }
+
+    const vertices = m.vertexList().map((v) => {
+      const vid = num(v);
+      const c = m.coords.get(vid);
+      return {
+        id: vid, x: c[0], y: c[1],
+        degree: m.vertexDeg.get(v),
+        desired: this.desiredDegree(vid),
+        desiredOptions: this.desiredDegrees(vid),
+        boundary: m.boundaryVerts.has(vid),
+        user: m.userVerts.has(vid),
+        deletable: this.deleteCandidate(vid) !== null,
+        quality: vertexQ.has(vid) ? vertexQ.get(vid) : 1,
+      };
+    });
+
+    const edges = [];
+    const seen = new Set();
+    for (const h of m.halfEdgeList()) {
+      if (seen.has(h)) continue;
+      seen.add(h);
+      seen.add(m.he.get(h).twin);
+      const r = m.he.get(h);
+      // `bow` is the arc's midpoint, present only on a curved boundary edge.
+      // The UI draws every edge as a quadratic bezier already, so one point is
+      // all it needs to follow the real boundary rather than the chord -- and
+      // it keeps arc geometry out of the renderer entirely.
+      const arc = m.arcs && m.arcs.get(num(r.source), num(r.target));
+      edges.push({
+        id: num(h), v1: num(r.source), v2: num(r.target),
+        boundary: m.onBoundary(h),
+        deletable: m.isValidDeleteHalfEdge(h),
+        bow: arc ? arc.point(0.5) : null,
+      });
+    }
+
+    const faces = [];
+    const insertablePairs = [];
+    for (const f of m.faceList()) {
+      const loop = m.faceLoop(m.firstFaceHalfEdge(f));
+      const srcs = loop.map((h) => num(m.he.get(h).source));
+      faces.push({
+        id: num(f), degree: m.faceDeg.get(f), vertices: srcs,
+        quality: faceQ.has(num(f)) ? faceQ.get(num(f)) : 1,
+      });
+      const n = loop.length;
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < n - 1; k++) {
+          const b = srcs[(i + k + 1) % n];
+          if (srcs[i] !== b && m.isValidEdgeInsert(loop[i], k)) {
+            insertablePairs.push([srcs[i], b]);
+          }
+        }
+      }
+    }
+
+    let vertexScore = 0;
+    let defectSum = 0;
+    for (const v of vertices) {
+      vertexScore += Math.min(...v.desiredOptions.map(w => Math.abs(v.degree - w)));
+      defectSum += v.desired - v.degree;
+    }
+    let faceScore = 0;
+    for (const f of faces) faceScore += Math.abs(f.degree - FACE_DESIRED);
+    let angleScore = 0;
+    for (const a of angles.values()) angleScore += Math.abs(a - TARGET_ANGLE) / TARGET_ANGLE;
+
+    return {
+      shape: this.shape,
+      shapes: Object.keys(SHAPES),
+      vertices, edges, faces,
+      insertable_pairs: insertablePairs,
+      scores: {
+        vertex: vertexScore, face: faceScore,
+        angle: angleScore, defect_sum: defectSum, min_quality: minQuality,
+      },
+      par: this.par,
+      quality_threshold: QUALITY_THRESHOLD,
+      best: this.storage ? this.storage.get(this.shape) ?? null : null,
+      new_record: this.recordJustSet,
+      moves: this.moves,
+      can_undo: this.undoStack.length > 0,
+    };
+  }
+}
+
+if (typeof module !== "undefined") {
+  module.exports = {
+    Game, Mesh, SHAPES, GameError, QUALITY_THRESHOLD, setElementTarget,
+    elementTarget, desiredOptions,
+  };
+}
+/* Mesh Quest — Copyright 2026 Arjun Narayanan.
+ * Licensed under the MIT License (see LICENSE).
+ * Released under the MIT License (see LICENSE).
+ */
+// --- GIF89a encoder ---------------------------------------------------------
+//
+// Just enough GIF to share a solve. The page ships as a single self-contained
+// file and never talks to the network, so this is written from scratch rather
+// than pulled from a CDN.
+//
+// Three things keep the output small: one global palette built by median cut,
+// LZW compression, and per-frame diffing — between two moves most of the board
+// is unchanged, and unchanged pixels are written as transparent so the previous
+// frame shows through.
+
+const GIF_BINS = 32768; // colour histogram at 5 bits per channel
+const GIF_TRANSPARENT = 0; // palette slot reserved for "unchanged since last frame"
+
+function gifBin(r, g, b) {
+  return ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+}
+
+// Exact colour sums are kept per bin, so a palette entry ends up the true
+// average of the pixels behind it rather than the centre of a coarse bin.
+function gifHistogram() {
+  return { count: new Uint32Array(GIF_BINS), sum: new Float64Array(GIF_BINS * 3) };
+}
+
+function gifCount(hist, rgba) {
+  const { count, sum } = hist;
+  for (let i = 0; i < rgba.length; i += 4) {
+    const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+    const bin = gifBin(r, g, b);
+    count[bin] += 1;
+    sum[bin * 3] += r;
+    sum[bin * 3 + 1] += g;
+    sum[bin * 3 + 2] += b;
+  }
+}
+
+// Median cut: repeatedly split a box of colours at its weighted median, along
+// its widest channel. Returns the palette plus a bin -> palette index table,
+// which makes mapping a pixel a single lookup with no nearest-colour search.
+function gifPalette(hist, wanted) {
+  const { count, sum } = hist;
+  const chan = (bin, axis) => (bin >> (10 - axis * 5)) & 31;
+
+  // Which box to split next is scored by population * spread, not spread alone.
+  // A board is mostly flat near-whites separated by a handful of levels: on
+  // spread alone that whole cluster looks tiny and never gets split, so the
+  // background, the dull faces and the palest tile all collapse into one grey
+  // while stray anti-aliasing colours eat the palette.
+  const describe = (bins) => {
+    let population = 0, span = 0, axis = 0;
+    for (const bin of bins) population += count[bin];
+    for (let a = 0; a < 3; a++) {
+      let lo = 31, hi = 0;
+      for (const bin of bins) {
+        const c = chan(bin, a);
+        if (c < lo) lo = c;
+        if (c > hi) hi = c;
+      }
+      if (hi - lo > span) { span = hi - lo; axis = a; }
+    }
+    return { bins, population, span, axis, score: population * span };
+  };
+
+  const occupied = [];
+  for (let bin = 0; bin < GIF_BINS; bin++) if (count[bin]) occupied.push(bin);
+  let boxes = [describe(occupied)];
+  while (boxes.length < wanted) {
+    let pick = -1, best = 0;
+    for (let i = 0; i < boxes.length; i++) {
+      if (boxes[i].score > best) { best = boxes[i].score; pick = i; }
+    }
+    if (pick < 0) break; // every box holds a single colour: nothing left to split
+    const box = boxes[pick];
+    const bins = box.bins;
+    bins.sort((a, b) => chan(a, box.axis) - chan(b, box.axis));
+    // Cut at the middle of the colour range rather than at the median pixel.
+    // One colour here can hold most of the pixels — the paper the board is
+    // drawn on — and a median cut then lands just past it every time, peeling
+    // off a thin tail while the background, the tiles and the dull faces stay
+    // stuck in one box for good.
+    const lo = chan(bins[0], box.axis);
+    const hi = chan(bins[bins.length - 1], box.axis);
+    const mid = (lo + hi) / 2;
+    let cut = 0;
+    while (cut < bins.length && chan(bins[cut], box.axis) <= mid) cut += 1;
+    if (cut === 0 || cut === bins.length) cut = bins.length >> 1; // never split empty
+    boxes.splice(pick, 1, describe(bins.slice(0, cut)), describe(bins.slice(cut)));
+  }
+
+  const palette = new Uint8Array(256 * 3);
+  const binIndex = new Uint8Array(GIF_BINS);
+  boxes.forEach((box, i) => {
+    const index = i + 1; // slot 0 stays reserved for transparency
+    let n = 0, r = 0, g = 0, b = 0;
+    for (const bin of box.bins) {
+      n += count[bin];
+      r += sum[bin * 3];
+      g += sum[bin * 3 + 1];
+      b += sum[bin * 3 + 2];
+      binIndex[bin] = index;
+    }
+    palette[index * 3] = Math.round(r / n);
+    palette[index * 3 + 1] = Math.round(g / n);
+    palette[index * 3 + 2] = Math.round(b / n);
+  });
+  return { palette, binIndex };
+}
+
+class GifBytes {
+  constructor(capacity = 1 << 16) {
+    this.buf = new Uint8Array(capacity);
+    this.len = 0;
+  }
+  _room(n) {
+    if (this.len + n <= this.buf.length) return;
+    let cap = this.buf.length * 2;
+    while (cap < this.len + n) cap *= 2;
+    const grown = new Uint8Array(cap);
+    grown.set(this.buf.subarray(0, this.len));
+    this.buf = grown;
+  }
+  byte(v) { this._room(1); this.buf[this.len++] = v & 0xff; }
+  bytes(a) { this._room(a.length); this.buf.set(a, this.len); this.len += a.length; }
+  short(v) { this.byte(v); this.byte(v >> 8); }
+  ascii(s) { for (let i = 0; i < s.length; i++) this.byte(s.charCodeAt(i)); }
+  take() { return this.buf.slice(0, this.len); }
+}
+
+// LZW as GIF wants it: 8-bit minimum code size, codes packed low-bit-first into
+// sub-blocks of at most 255 bytes.
+function gifLzw(out, indices) {
+  const MIN = 8, CLEAR = 1 << MIN, EOI = CLEAR + 1;
+  out.byte(MIN);
+  const block = new Uint8Array(255);
+  let blockLen = 0;
+  const flush = () => {
+    if (!blockLen) return;
+    out.byte(blockLen);
+    out.bytes(block.subarray(0, blockLen));
+    blockLen = 0;
+  };
+  let cur = 0, curBits = 0, codeSize = MIN + 1, next = EOI + 1;
+  let table = new Map();
+  const emit = (code) => {
+    cur |= code << curBits;
+    curBits += codeSize;
+    while (curBits >= 8) {
+      block[blockLen++] = cur & 0xff;
+      cur >>= 8;
+      curBits -= 8;
+      if (blockLen === 255) flush();
+    }
+  };
+
+  emit(CLEAR);
+  let prefix = indices[0];
+  for (let i = 1; i < indices.length; i++) {
+    const k = indices[i];
+    const key = (prefix << 8) | k;
+    const known = table.get(key);
+    if (known !== undefined) { prefix = known; continue; }
+    emit(prefix);
+    if (next === 4096) { // dictionary full: start a new one
+      emit(CLEAR);
+      table = new Map();
+      next = EOI + 1;
+      codeSize = MIN + 1;
+    } else {
+      if (next >= (1 << codeSize)) codeSize += 1;
+      table.set(key, next++);
+    }
+    prefix = k;
+  }
+  emit(prefix);
+  emit(EOI);
+  if (curBits > 0) {
+    block[blockLen++] = cur & 0xff;
+    if (blockLen === 255) flush();
+  }
+  flush();
+  out.byte(0); // end of the LZW sub-block chain
+}
+
+// Encoding runs as a generator so a browser can drive it a step at a time and
+// stay responsive; each yield is a 0..1 progress fraction. Call gifEncode() for
+// the plain synchronous version.
+//
+//   frames  array of RGBA Uint8ClampedArray, each width * height * 4
+//   delays  per-frame delay in hundredths of a second
+function* gifEncodeSteps(frames, width, height, options = {}) {
+  if (!frames.length) throw new Error("gif: no frames");
+  const loop = options.loop ?? 0;
+  let delays = options.delays || frames.map(() => 60);
+
+  // Identical neighbours are free: drop them and lengthen the delay instead.
+  const kept = [], keptDelays = [];
+  for (let i = 0; i < frames.length; i++) {
+    const same = i > 0 && gifSameFrame(frames[i], kept[kept.length - 1]);
+    if (same) keptDelays[keptDelays.length - 1] += delays[i];
+    else { kept.push(frames[i]); keptDelays.push(delays[i]); }
+  }
+  frames = kept;
+  delays = keptDelays;
+
+  const hist = gifHistogram();
+  for (let i = 0; i < frames.length; i++) {
+    gifCount(hist, frames[i]);
+    yield (0.45 * (i + 1)) / frames.length;
+  }
+  const { palette, binIndex } = gifPalette(hist, 255);
+  yield 0.5;
+
+  const out = new GifBytes(1 << 18);
+  out.ascii("GIF89a");
+  out.short(width);
+  out.short(height);
+  out.byte(0xf7); // global colour table, 8 bits per pixel, 256 entries
+  out.byte(GIF_TRANSPARENT);
+  out.byte(0);
+  out.bytes(palette);
+  // NETSCAPE2.0 is how a GIF says "loop"
+  out.byte(0x21); out.byte(0xff); out.byte(0x0b);
+  out.ascii("NETSCAPE2.0");
+  out.byte(0x03); out.byte(0x01); out.short(loop); out.byte(0);
+
+  const pixels = width * height;
+  let previous = null;
+  for (let f = 0; f < frames.length; f++) {
+    const rgba = frames[f];
+    const indices = new Uint8Array(pixels);
+    for (let p = 0, i = 0; p < pixels; p++, i += 4) {
+      indices[p] = binIndex[gifBin(rgba[i], rgba[i + 1], rgba[i + 2])];
+    }
+
+    // Only the rectangle that actually changed gets written; inside it,
+    // unchanged pixels go out transparent and the previous frame shows through.
+    let x0 = 0, y0 = 0, x1 = width - 1, y1 = height - 1, diffed = false;
+    if (previous) {
+      diffed = true;
+      x0 = width; y0 = height; x1 = -1; y1 = -1;
+      for (let y = 0, p = 0; y < height; y++) {
+        for (let x = 0; x < width; x++, p++) {
+          if (indices[p] === previous[p]) continue;
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+      if (x1 < x0) { x0 = y0 = 0; x1 = y1 = 0; } // no change: emit one pixel
+    }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const sub = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const p = (y0 + y) * width + x0 + x;
+        sub[y * w + x] = diffed && indices[p] === previous[p]
+          ? GIF_TRANSPARENT : indices[p];
+      }
+    }
+
+    out.byte(0x21); out.byte(0xf9); out.byte(0x04);
+    // disposal 1 (leave the frame in place) is what makes diffing work
+    out.byte((1 << 2) | (diffed ? 1 : 0));
+    out.short(Math.max(2, Math.round(delays[f])));
+    out.byte(GIF_TRANSPARENT);
+    out.byte(0);
+
+    out.byte(0x2c);
+    out.short(x0); out.short(y0); out.short(w); out.short(h);
+    out.byte(0); // no local colour table, not interlaced
+    gifLzw(out, sub);
+
+    previous = indices;
+    yield 0.5 + (0.5 * (f + 1)) / frames.length;
+  }
+
+  out.byte(0x3b);
+  return out.take();
+}
+
+function gifSameFrame(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 4) {
+    if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) return false;
+  }
+  return true;
+}
+
+function gifEncode(frames, width, height, options) {
+  const steps = gifEncodeSteps(frames, width, height, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { gifEncode, gifEncodeSteps };
+}
+/* Mesh Quest — Copyright 2026 Arjun Narayanan.
+ * Licensed under the MIT License (see LICENSE).
+ * Released under the MIT License (see LICENSE).
+ */
+// --- UI ---------------------------------------------------------------------
+
+const storage = {
+  _read() {
+    try { return JSON.parse(localStorage.getItem("meshquest-records") || "{}"); }
+    catch { return {}; }
+  },
+  // Quad records keep the bare shape name so existing bests survive; the
+  // triangle target is a different puzzle on the same outline and gets its own.
+  _key(shape) {
+    return elementTarget() === 4 ? shape : `${elementTarget()}:${shape}`;
+  },
+  get(shape) {
+    const r = this._read();
+    const k = this._key(shape);
+    return k in r ? r[k] : null;
+  },
+  set(shape, moves) {
+    try {
+      const r = this._read();
+      r[this._key(shape)] = moves;
+      localStorage.setItem("meshquest-records", JSON.stringify(r));
+    } catch { /* private-mode browsers: records just don't persist */ }
+  },
+};
+
+const game = new Game("L-shape", storage);
+
+// activity log: everything the player does, exportable from the ? panel
+const activityLog = (() => {
+  try { return JSON.parse(localStorage.getItem("meshquest-log") || "[]"); }
+  catch { return []; }
+})();
+let logSaveQueued = false;
+function logEvent(type, data = {}) {
+  activityLog.push({ t: new Date().toISOString(), shape: game.shape, type, ...data });
+  if (activityLog.length > 3000) activityLog.splice(0, activityLog.length - 3000);
+  if (!logSaveQueued) {
+    logSaveQueued = true;
+    setTimeout(() => {
+      logSaveQueued = false;
+      try { localStorage.setItem("meshquest-log", JSON.stringify(activityLog)); } catch {}
+    }, 400);
+  }
+}
+// --- solve log ---------------------------------------------------------------
+// A solved board is worth keeping: the move list is exactly what replays the
+// solve in the Python engine. Published as an Artifact the page cannot download
+// a file on its own -- the viewer sandbox blocks page-initiated saves -- so it
+// asks the platform to offer the file instead, and falls back to a plain blob
+// download when served as an ordinary file. Best-effort and silent throughout:
+// there may be no `claude` at all, and a viewer may decline.
+let runOps = [];
+let solveHistory = [];
+let downloadsHandle = null;
+if (typeof window !== "undefined" && window.claude && typeof window.claude.use === "function") {
+  window.claude.use("downloads").then(handle => { downloadsHandle = handle; }).catch(() => {});
+}
+
+function runRecord(solved) {
+  return {
+    shape: game.shape,
+    target: elementTarget(),
+    par: state.par,
+    score: state.scores.vertex,
+    faceScore: state.scores.face,
+    minQuality: state.scores.min_quality,
+    moves: state.moves,
+    solved: !!solved,
+    // (op, vertex ids) survives a rebuild of the mesh; half-edge ids do not
+    ops: runOps.map(entry => ({
+      op: entry.op,
+      verts: entry.verts,
+      ...(entry.params === undefined ? {} : { params: entry.params }),
+      ...(entry.smooth === undefined ? {} : { smooth: entry.smooth }),
+      ...(entry.iterations === undefined ? {} : { iterations: entry.iterations }),
+    })),
+    savedAt: new Date().toISOString(),
+  };
+}
+
+// keep the shortest win per (target, level) plus whatever is on the board now,
+// so the exported file stays small however long the session runs
+function recordRun(solved) {
+  if (!state) return;
+  const record = runRecord(solved);
+  if (!solved) return;
+  const index = solveHistory.findIndex(
+    r => r.shape === record.shape && r.target === record.target);
+  if (index < 0) solveHistory.push(record);
+  else if (solveHistory[index].moves > record.moves) solveHistory[index] = record;
+}
+
+// --- attempts ----------------------------------------------------------------
+// An unsolved board is the interesting one when something is wrong: the move list
+// is what reproduces it. `recordRun` keeps wins only, and abandoning a board threw
+// the sequence away, so a level you could not finish left nothing behind but the
+// last position. Attempts keep the sequence on every path that ends a run --
+// reset, level change, or export -- win or not.
+let attemptHistory = [];
+const MAX_ATTEMPTS = 60;
+function isSolvedNow() {
+  if (!state) return false;
+  const s = state.scores;
+  return s.vertex === state.par && s.face === 0
+      && s.min_quality >= state.quality_threshold;
+}
+function recordAttempt(reason) {
+  if (!state || runOps.length === 0) return;   // nothing was done; nothing to keep
+  attemptHistory.push({ ...runRecord(isSolvedNow()), endedBy: reason });
+  if (attemptHistory.length > MAX_ATTEMPTS) {
+    attemptHistory.splice(0, attemptHistory.length - MAX_ATTEMPTS);
+  }
+}
+
+async function exportSolves() {
+  recordAttempt("export");
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    solves: solveHistory,
+    attempts: attemptHistory,
+    current: state ? runRecord(false) : null,
+    events: activityLog,
+  };
+  const text = JSON.stringify(payload, null, 1);
+  if (downloadsHandle) {
+    try {
+      await downloadsHandle.save({ filename: "meshquest-moves.json", data: text });
+      toast(exportSummary());
+    } catch (error) {
+      // "declined" is the viewer saying no, not a failure to report loudly
+      if (!error || error.code !== "declined") toast("Could not save the file");
+    }
+    return;
+  }
+  const blob = new Blob([text], { type: "application/json" });
+  const anchor = document.createElement("a");
+  anchor.href = URL.createObjectURL(blob);
+  anchor.download = "meshquest-moves.json";
+  anchor.click();
+  URL.revokeObjectURL(anchor.href);
+  toast(exportSummary());
+}
+
+// the count that matters to whoever reads the file is boards, not wins: an
+// unsolved attempt is usually the one worth replaying
+function exportSummary() {
+  const boards = attemptHistory.length;
+  const moves = attemptHistory.reduce((n, a) => n + a.ops.length, 0);
+  return `Exported ${moves} moves over ${boards} board${boards === 1 ? "" : "s"}`;
+}
+
+let state = null;
+let boardRevision = 0;
+let mode = "insert_vertex";
+let selectedVertex = null;
+let wasWon = false;
+let wasNearWin = false;
+let hitEdges = [], hitVerts = [], hoverTarget = null;
+// face ids already showing a mosaic colour, so a tile animates in only once
+let tiledFaces = new Set();
+// mosaic colour for a face: a hash of its id picks one of TILE_HUES hues and a
+// full or pale cut of it — so a tile keeps its colour for life, and neighbours
+// (consecutive ids) seldom land on the same glass
+const TILE_HUES = 8;
+function tileClass(id) {
+  let h = Math.imul(id + 1, 0x9e3779b1) >>> 0;
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  return `t${h % TILE_HUES}${h & 8 ? " pale" : ""}`;
+}
+// user-adjusted board offset, remembered across levels and sessions
+const view = (() => {
+  try { return { x: 0, y: 0, ...JSON.parse(localStorage.getItem("meshquest-view") || "{}") }; }
+  catch { return { x: 0, y: 0 }; }
+})();
+function saveView() {
+  try { localStorage.setItem("meshquest-view", JSON.stringify({ x: view.x, y: view.y })); } catch {}
+}
+let renderQueued = false;
+function queueRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => { renderQueued = false; render(); });
+}
+const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+const EDGE_PICK_RADIUS = coarsePointer ? 48 : 40;
+const VERTEX_PICK_RADIUS = coarsePointer ? 38 : 30;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// --- tutorial + level notes -------------------------------------------------
+
+const TUT_SVG = {
+  tiles: `<svg viewBox="0 0 120 84">
+    <polygon class="tvis-tile t1" points="14,14 60,14 60,49 14,49"></polygon>
+    <polygon class="tvis-tile t3 d2" points="60,14 106,14 106,49 60,49"></polygon>
+    <polygon class="tvis-tile t6 d3" points="14,49 60,49 60,79 14,79"></polygon>
+    <path class="tvis-line" d="M14,14 L106,14 L106,49 L60,49 L60,79 L14,79 Z"></path>
+    <path class="tvis-line" d="M60,14 L60,49 L14,49"></path>
+  </svg>`,
+  wants: `<svg viewBox="0 0 120 84">
+    <line class="tvis-line tvis-ray r1" pathLength="1" x1="60" y1="42" x2="60" y2="12"></line>
+    <line class="tvis-line tvis-ray r2" pathLength="1" x1="60" y1="42" x2="94" y2="42"></line>
+    <line class="tvis-line tvis-ray r3" pathLength="1" x1="60" y1="42" x2="60" y2="72"></line>
+    <line class="tvis-line tvis-ray r4" pathLength="1" x1="60" y1="42" x2="26" y2="42"></line>
+    <circle class="tvis-dot tvis-blush" cx="60" cy="42" r="8"></circle>
+  </svg>`,
+  pop: `<svg viewBox="0 0 120 84">
+    <line class="tvis-line" x1="14" y1="42" x2="106" y2="42"></line>
+    <circle class="tvis-dot tvis-pop" cx="60" cy="42" r="8"></circle>
+  </svg>`,
+  draw: `<svg viewBox="0 0 120 84">
+    <circle class="tvis-dot" cx="20" cy="42" r="8"></circle>
+    <circle class="tvis-dot" cx="100" cy="42" r="8"></circle>
+    <line class="tvis-line tvis-draw" pathLength="1" x1="20" y1="42" x2="100" y2="42"></line>
+  </svg>`,
+  happy: `<svg viewBox="0 0 120 84">
+    <circle class="tvis-good g1" cx="30" cy="42" r="9"></circle>
+    <circle class="tvis-good g2" cx="60" cy="42" r="9"></circle>
+    <circle class="tvis-good g3" cx="90" cy="42" r="9"></circle>
+  </svg>`,
+  par: `<svg viewBox="0 0 120 84">
+    <path class="tvis-line" d="M60,14 L98,72 L22,72 Z"></path>
+    <circle class="tvis-badge" cx="60" cy="52" r="13"></circle>
+    <text class="tvis-badge-text" x="60" y="57">1</text>
+  </svg>`,
+  hubs: `<svg viewBox="0 0 236 84">
+    <path class="tvis-line" d="M 58.0,12.0 L 51.3,32.7 L 29.5,32.7 L 47.1,45.5 L 40.4,66.3 L 58.0,53.5 L 75.6,66.3 L 68.9,45.5 L 86.5,32.7 L 64.7,32.7 Z"></path>
+    <line class="tvis-spoke" x1="51.3" y1="32.7" x2="58" y2="42"></line><line class="tvis-spoke" x1="47.1" y1="45.5" x2="58" y2="42"></line><line class="tvis-spoke" x1="58.0" y1="53.5" x2="58" y2="42"></line><line class="tvis-spoke" x1="68.9" y1="45.5" x2="58" y2="42"></line><line class="tvis-spoke" x1="64.7" y1="32.7" x2="58" y2="42"></line>
+    <circle class="tvis-dot tvis-blush tvis-pulse" cx="58" cy="42" r="7"></circle>
+    <text class="tvis-flat-label" x="58" y="72" text-anchor="middle">5 lines, wants 4</text>
+    <path class="tvis-line" d="M 178.0,12.0 L 171.3,32.7 L 149.5,32.7 L 167.1,45.5 L 160.4,66.3 L 178.0,53.5 L 195.6,66.3 L 188.9,45.5 L 206.5,32.7 L 184.7,32.7 Z"></path>
+    <line class="tvis-spoke" x1="167.1" y1="45.5" x2="170.0" y2="46.0"></line><line class="tvis-spoke" x1="178.0" y1="53.5" x2="170.0" y2="46.0"></line><line class="tvis-spoke" x1="188.9" y1="45.5" x2="170.0" y2="46.0"></line><line class="tvis-spoke" x1="184.7" y1="32.7" x2="187.0" y2="38.0"></line><line class="tvis-spoke" x1="171.3" y1="32.7" x2="187.0" y2="38.0"></line><line class="tvis-spoke" x1="170.0" y1="46.0" x2="187.0" y2="38.0"></line>
+    <circle class="tvis-good" cx="170.0" cy="46.0" r="6"></circle>
+    <circle class="tvis-good g2" cx="187.0" cy="38.0" r="6"></circle>
+    <text class="tvis-ok-label" x="178" y="72" text-anchor="middle">nobody over-stuffed</text>
+  </svg>`,
+  flatfix: `<svg viewBox="0 0 240 84">
+    <path class="tvis-line" d="M10,74 L90,74 L50,14 Z"></path>
+    <circle class="tvis-dot tvis-blush tvis-pulse" cx="30" cy="44" r="7"></circle>
+    <text class="tvis-flat-label" x="42" y="40">180&#176;</text>
+    <path class="tvis-line" d="M150,74 L230,74 L190,14 Z"></path>
+    <line class="tvis-spoke" x1="170" y1="44" x2="190" y2="52"></line>
+    <line class="tvis-spoke" x1="210" y1="44" x2="190" y2="52"></line>
+    <line class="tvis-spoke" x1="190" y1="74" x2="190" y2="52"></line>
+    <circle class="tvis-good" cx="170" cy="44" r="6"></circle>
+    <circle class="tvis-good g2" cx="210" cy="44" r="6"></circle>
+    <circle class="tvis-good g3" cx="190" cy="74" r="6"></circle>
+    <circle class="tvis-dot tvis-pop" cx="190" cy="52" r="7"></circle>
+  </svg>`,
+};
+
+const TUTORIAL_L = [
+  { svg: "tiles", chip: "r-score", next: "Let's go!",
+    text: "Cut the shape into <b>4-sided tiles</b>." },
+  { svg: "wants", vertex: 3, next: "Help it!",
+    text: "Every dot wants just-right lines.<br>Red dot = unhappy." },
+  { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [0, 1] },
+    text: "Tap the glowing edge — pop a new dot!" },
+  { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [5, 0] },
+    text: "Now the left edge. One more dot!" },
+  { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [6, 3] },
+    text: "Tap the new dot, then the red dot." },
+  { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [7, 3] },
+    text: "Last line!" },
+  { svg: "happy", chip: "r-par", next: "Whoa",
+    text: "All green! The corners <i>always</i> add up — 200-year-old math promises." },
+  { svg: "par", next: "Play!",
+    text: "<b>Par</b> = best score possible.<br>Match it on every level." },
+];
+
+// step-1 illustration drawn from the actual level: its outline, being tiled
+function makeShapeTilesSvg(st) {
+  const xs = st.vertices.map(v => v.x), ys = st.vertices.map(v => v.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const sc = Math.min(100 / Math.max(maxX - minX, 1e-9), 64 / Math.max(maxY - minY, 1e-9));
+  const X = x => 60 + (x - (minX + maxX) / 2) * sc;
+  const Y = y => 42 - (y - (minY + maxY) / 2) * sc;
+  const pos = {};
+  st.vertices.forEach(v => { pos[v.id] = X(v.x).toFixed(1) + "," + Y(v.y).toFixed(1); });
+  const polys = st.faces.map(f => f.vertices.map(id => pos[id]).join(" "));
+  const clip = "tclip" + Math.random().toString(36).slice(2, 7);
+  let cells = "";
+  for (let gx = 0; gx < 5; gx++) {
+    for (let gy = 0; gy < 4; gy++) {
+      cells += `<rect class="tvis-cell ${tileClass(gx * 4 + gy)}"
+        style="animation-delay:${(((gx + gy) % 5) * 0.3).toFixed(1)}s"
+        x="${8 + gx * 21}" y="${5 + gy * 18.5}" width="19" height="16.5"></rect>`;
+    }
+  }
+  return `<svg viewBox="0 0 120 84">
+    <clipPath id="${clip}">${polys.map(p => `<polygon points="${p}"></polygon>`).join("")}</clipPath>
+    <g clip-path="url(#${clip})">${cells}</g>
+    ${polys.map(p => `<polygon class="tvis-line" points="${p}" fill="none"></polygon>`).join("")}
+  </svg>`;
+}
+
+// levels whose tutorial walks the actual (certified) solve
+const SOLUTION_TUTORIALS = {
+  "Star": st => [
+    { svgRaw: makeShapeTilesSvg(st), chip: "r-par", next: "Show me",
+      text: "Every point needs its own tile. <b>Par is 4</b>: four dots must stay unhappy — you only choose <i>which</i>." },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [3, 7] },
+      text: "Cut straight across, inside corner to inside corner." },
+    { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [3, 7] },
+      text: "Pop a dot in the middle of that new line. This is a <b>hub</b>." },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [5, 10] },
+      text: "Join the inside corner between two points to the hub — two tiles done!" },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [3, 7] },
+      text: "Same cut again, this time across the <i>other</i> side." },
+    { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [3, 7] },
+      text: "Pop a second hub in the middle of it." },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [11, 9] },
+      text: "Join an inside corner to this hub." },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [11, 1] },
+      text: "And the last one!" },
+    { svg: "hubs", next: "Play!",
+      text: "Why two hubs? One hub in the middle is prettier — but it ends up with <b>5</b> lines when it wants 4. Too many is just as unhappy as too few, so that costs 6. With two hubs nobody is over-stuffed: 4 dots are just a little short, and 4 is the best anyone can do here." },
+  ],
+  "Triangle": st => [
+    { svgRaw: makeShapeTilesSvg(st), chip: "r-par", next: "Let's go!",
+      text: "The Triangle's <b>Par is 1</b> — one dot must stay imperfect. Here's the classic way." },
+    { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [0, 1] },
+      text: "A dot on every side. First: the glowing edge." },
+    { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [1, 2] },
+      text: "Second side!" },
+    { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [2, 0] },
+      text: "Third side!" },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [3, 5] },
+      text: "Draw a line between two of the new dots." },
+    { svg: "pop", mode: "insert_vertex", require: { op: "insert_vertex", edge: [3, 5] },
+      text: "Pop a dot in the middle of that new line." },
+    { svg: "draw", mode: "insert_edge", require: { op: "insert_edge", pair: [6, 4] },
+      text: "Connect the middle dot to the last side dot." },
+    { svg: "happy", next: "Play!",
+      text: "Three tiles — par! The middle dot wants 4 lines but has 3: the unavoidable 1. This trick is called <b>Catmull&ndash;Clark</b>." },
+  ],
+};
+
+function buildTutorial(shape, st) {
+  if (shape === "L-shape") return { steps: TUTORIAL_L };
+  if (SOLUTION_TUTORIALS[shape]) {
+    return { steps: SOLUTION_TUTORIALS[shape](st) };
+  }
+  // one hint card, tailored to this shape. No scripted actions: a generic
+  // "pop a dot first" prompt walks players off levels whose solves are pure
+  // chords (Pac-Man, Plus, Gear).
+  return {
+    steps: [{
+      svgRaw: makeShapeTilesSvg(st),
+      chip: "r-par",
+      next: "Play!",
+      text: (LEVEL_HINTS[shape] || "Cut it into 4-sided tiles.")
+        + `<br><br>${LEVEL_NOTES[shape] || ""}`,
+    }],
+  };
+}
+
+// what to try on each level — sets the right tool expectation, no spoilers
+const LEVEL_HINTS = {
+  "T-bracket": "Cut across where the stem meets the bar. Some cuts need a new dot to land on.",
+  "I-bracket": "One bar at a time. Pop a dot wherever a cut has nowhere to land.",
+  "U-channel": "Give the floor and each prong their own tiles.",
+  "Z-shape": "Cut <i>with</i> the lean, not against it.",
+  "Plus": "Lines only — no new dots needed!",
+  "Staircase": "One step at a time. Each step is a little L.",
+  "Pentagon": "Five sides is odd! Pop one dot to make it even, then cut.",
+  "Semicircle": "Pop a dot on the flat side first. Then pick two round dots to be corners.",
+  "Pac-Man": "No new dots needed — try cutting straight out from the middle.",
+  "Star": "Give every point its own tile, then sort out the middle.",
+  "Square hole": "Work around the ring, tile by tile. The seam line belongs — keep it!",
+  "Triforce ring": "Tile around the ring. The little seam line already belongs — keep it!",
+  "Gear": "One cut across each tooth makes six tiles fast. Then the ring of dots left in the middle is the real puzzle.",
+};
+
+const LEVEL_NOTES = {
+  "T-bracket": "Two grumpy inside corners now. A perfect 0 is still possible.",
+  "I-bracket": "Eight corners to fix. A plan beats random cuts.",
+  "U-channel": "Each prong wants its own tiles. Par 0.",
+  "Z-shape": "The two inside corners lean opposite ways. Cut with the lean.",
+  "Plus": "Four arms, four inside corners. There's a beautiful symmetric answer.",
+  "Staircase": "Three L-shapes in a trench coat. The L trick works on every step.",
+  "Triangle": "3 sides — an odd number! Tiles need an even rim, so pop a dot first. And one dot must stay sad: par 1. You pick which.",
+  "Pentagon": "A bit too pointy overall: par 1. One dot takes the hit — where will you hide it?",
+  "Semicircle": "Round shapes secretly want corners. Pick 2 arc dots to be them — par 2.",
+  "Pac-Man": "Par 3 — odd, so no fair sharing. Psst: seen this shape before, in disguise?",
+  "Star": "The star loves symmetry — but symmetric answers score 6, not 4. Break the pattern to win. Really.",
+  "Square hole": "A hole! Inside corners cancel outside corners: perfect 0 possible. Holes help.",
+  "Triforce ring": "Pointy corners and hole corners cancel exactly: par 0, a perfect mesh.",
+  "Gear": "The teeth are the easy part — one cut each. What is left is a 12-sided ring, and a round ring secretly wants to be a square: exactly 4 dots must stay unhappy. That is the par.",
+};
+
+let tut = null; // { i, steps } while a card sequence is active
+const seenNotes = (() => {
+  try { return new Set(JSON.parse(localStorage.getItem("meshquest-notes") || "[]")); }
+  catch { return new Set(); }
+})();
+
+function tutStep() { return tut ? tut.steps[tut.i] : null; }
+
+function sameSet(a, b) {
+  return a.length === b.length && a.every(x => b.includes(x));
+}
+
+function tutAllows(kind, id) {
+  const s = tutStep();
+  if (!s) return true;
+  if (!s.require) return false; // info steps: board locked
+  const r = s.require;
+  if (r.op === "insert_vertex" || r.op === "delete_edge") {
+    if (kind !== "edge") return false;
+    if (!r.edge) return true; // unconstrained step: any edge
+    const e = state.edges.find(e => e.id === id);
+    return !!e && sameSet([e.v1, e.v2], r.edge);
+  }
+  if (r.op === "insert_edge") {
+    if (kind !== "vertex") return false;
+    return !r.pair || r.pair.includes(id);
+  }
+  return false;
+}
+
+function showCard(eyebrow, html, nextLabel, onNext, onSkip) {
+  const card = document.getElementById("tutcard");
+  document.getElementById("tut-eyebrow").textContent = eyebrow;
+  document.getElementById("tut-body").innerHTML = html;
+  const nextBtn = document.getElementById("tut-next");
+  const skipBtn = document.getElementById("tut-skip");
+  nextBtn.classList.toggle("hidden", !nextLabel);
+  if (nextLabel) nextBtn.textContent = nextLabel;
+  nextBtn.onclick = onNext || null;
+  skipBtn.onclick = onSkip || (() => hideCard());
+  card.classList.add("show");
+  if (state) render();
+}
+
+function hideCard() {
+  document.getElementById("tutcard").classList.remove("show");
+  if (state) render();
+}
+
+function tutShow() {
+  const s = tutStep();
+  if (s.mode) setMode(s.mode, true);
+  const dots = tut.steps.length > 1
+    ? tut.steps.map((_, k) => (k <= tut.i ? "●" : "○")).join(" ")
+    : game.shape;
+  const body = (s.svgRaw || (s.svg ? TUT_SVG[s.svg] : "")) + `<div>${s.text}</div>`;
+  showCard(dots, body, s.next || null, s.next ? tutAdvance : null, tutEnd);
+  render();
+}
+
+function tutAdvance() {
+  tut.i += 1;
+  if (tut.i >= tut.steps.length) tutEnd();
+  else tutShow();
+}
+
+function tutEnd() {
+  logEvent("tutorial_end", { at_step: tut ? tut.i : null });
+  tut = null;
+  try { localStorage.setItem("meshquest-tutorial", "done"); } catch {}
+  hideCard();
+  // any moves made during a card sequence are real: progress is kept
+  render();
+}
+
+function tutStart() {
+  hideCard();
+  document.getElementById("autosmooth").checked = true;
+  // scripted walkthroughs need their exact starting board; hint cards run on
+  // whatever the player already has, so in-progress work is never lost
+  const scripted = game.shape === "L-shape" || !!SOLUTION_TUTORIALS[game.shape];
+  if (scripted) { game.reset(game.shape); tiledFaces.clear(); runOps = []; }
+  state = game.serialize();
+  selectedVertex = null;
+  const { steps } = buildTutorial(game.shape, state);
+  tut = { i: 0, steps };
+  logEvent("tutorial_start", { steps: steps.length });
+  tutShow();
+}
+
+function tutCheck(desc) {
+  const s = tutStep();
+  if (!s || !s.require) return;
+  const r = s.require;
+  if (r.op !== desc.op) return;
+  const want = r.edge || r.pair;
+  if (!want || sameSet(desc.verts, want)) tutAdvance();
+}
+
+function maybeShowNote(shape) {
+  // the notes quote quad pars ("Par 0", "a perfect 0"), which are wrong at the
+  // triangle target -- L-shape is par 2 there
+  if (elementTarget() !== 4) return;
+  if (tut || !LEVEL_NOTES[shape] || seenNotes.has(shape)) return;
+  const dismiss = () => {
+    seenNotes.add(shape);
+    try { localStorage.setItem("meshquest-notes", JSON.stringify([...seenNotes])); } catch {}
+    hideCard();
+  };
+  showCard(`Level note — ${shape}`, LEVEL_NOTES[shape], "Got it", dismiss, dismiss);
+}
+
+const HINTS = {
+  insert_vertex: "Click any edge to split it with a midpoint vertex.",
+  delete_vertex: "Click a highlighted vertex — degree 2 and not an original corner.",
+  insert_edge: "Click two vertices on the same face to connect them.",
+  delete_edge: "Click an interior edge to delete it and merge its two faces.",
+};
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+function refresh() {
+  state = game.serialize();
+  selectedVertex = null;
+  boardRevision += 1; // stamps the board so a cached replay is never stale
+  render();
+}
+
+function doOp(op, params) {
+  const auto = document.getElementById("autosmooth").checked;
+  let verts = [];
+  if (op === "insert_vertex" || op === "delete_edge") {
+    const e = state.edges.find(e => e.id === params.edge);
+    if (e) verts = [e.v1, e.v2];
+  } else if (op === "insert_edge") {
+    verts = [params.a, params.b];
+  } else if (op === "delete_vertex") {
+    verts = [params.vertex];
+  }
+  try {
+    game.applyOp(op, params, auto);
+  } catch (e) {
+    logEvent("op_rejected", { op, verts, error: e.message });
+    toast(e.message);
+    return;
+  }
+  refresh();
+  // Two identifiers for the same click, on purpose. `params` is exact -- ids
+  // match a replay through the python engine move for move, because the two
+  // engines allocate them the same way -- but it does not survive a rebuild of
+  // the mesh, and two vertices can carry more than one edge, so `verts` alone
+  // is ambiguous. Logging both lets a replay use the id and check it against
+  // the endpoints, and fall back to the endpoints when the ids have drifted.
+  // `smooth` keeps the replayed coordinates, and so min quality, the same.
+  runOps.push({ op, verts, params: { ...params }, smooth: auto });
+  logEvent("op", { op, verts, moves: state.moves, scores: state.scores });
+  tutCheck({ op, verts });
+}
+
+// Two vertices can be joined by more than one edge; those get bowed apart so
+// each stays clickable. The board and the shared replay both draw from here, so
+// a GIF always matches the screen it came from.
+function edgeCurves(edges, pos, spread = 26, toScreen = null) {
+  const groups = new Map();
+  for (const e of edges) {
+    const key = Math.min(e.v1, e.v2) + "-" + Math.max(e.v1, e.v2);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  const curves = [];
+  for (const group of groups.values()) {
+    group.forEach((e, i) => {
+      const [x1, y1] = pos[e.v1], [x2, y2] = pos[e.v2];
+      // A curved level hands us the arc's own midpoint. A quadratic bezier
+      // passes through C/2 + (P0+P1)/4 at t=.5, so putting the control at
+      // 2M - (P0+P1)/2 makes the drawn edge meet the real boundary there --
+      // near enough over a quarter turn that the player sees the true shape.
+      if (e.bow && toScreen && group.length === 1) {
+        const [mx, my] = toScreen(e.bow[0], e.bow[1]);
+        curves.push({ edge: e, x1, y1, x2, y2,
+                      cx: 2 * mx - (x1 + x2) / 2, cy: 2 * my - (y1 + y2) / 2 });
+        return;
+      }
+      const off = (i - (group.length - 1) / 2) * spread;
+      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+      curves.push({
+        edge: e, x1, y1, x2, y2,
+        cx: (x1 + x2) / 2 - (dy / len) * off,
+        cy: (y1 + y2) / 2 + (dx / len) * off,
+      });
+    });
+  }
+  return curves;
+}
+
+// A face whose rim includes a boundary arc is drawn along that arc, not across
+// its chord: otherwise the tile pulls away from the outline it is meant to fill.
+function facePath(vertexIds, pos, bows, toScreen) {
+  let d = "M " + pos[vertexIds[0]].join(" ");
+  for (let i = 0; i < vertexIds.length; i++) {
+    const a = vertexIds[i], b = vertexIds[(i + 1) % vertexIds.length];
+    const bow = bows && bows.get(Math.min(a, b) + "-" + Math.max(a, b));
+    const [x2, y2] = pos[b];
+    if (bow && toScreen) {
+      const [x1, y1] = pos[a];
+      const [mx, my] = toScreen(bow[0], bow[1]);
+      d += ` Q ${2 * mx - (x1 + x2) / 2} ${2 * my - (y1 + y2) / 2} ${x2} ${y2}`;
+    } else {
+      d += ` L ${x2} ${y2}`;
+    }
+  }
+  return d + " Z";
+}
+
+function bowMap(edges) {
+  const out = new Map();
+  for (const e of edges) {
+    if (e.bow) out.set(Math.min(e.v1, e.v2) + "-" + Math.max(e.v1, e.v2), e.bow);
+  }
+  return out.size ? out : null;
+}
+
+function partnerMap() {
+  const map = {};
+  for (const [a, b] of state.insertable_pairs) {
+    (map[a] = map[a] || new Set()).add(b);
+    (map[b] = map[b] || new Set()).add(a);
+  }
+  return map;
+}
+
+function render() {
+  const svg = document.getElementById("canvas");
+  svg.setAttribute("class", mode === "insert_vertex" || mode === "delete_edge" ? "edge-mode" : "");
+  // narrow screens: while a card is open the header/toolbar are dead weight
+  // (the tool is auto-selected), so give that space to the board — except on
+  // steps that spotlight a readout chip, which need the header visible.
+  const cardEl = document.getElementById("tutcard");
+  const cardOpen = cardEl.classList.contains("show");
+  const stepNow = tutStep();
+  document.body.classList.toggle("card-open", cardOpen);
+  document.body.classList.toggle("chip-step", !!(stepNow && stepNow.chip));
+  const W = svg.clientWidth, H = svg.clientHeight;
+  const M = Math.min(60, Math.max(28, Math.min(W, H) * 0.08));
+  // when the tutorial/note card is open on a wide screen it sits on the left;
+  // reserve that band so it never covers the geometry
+  const leftPad = cardOpen && W > 720 ? cardEl.offsetWidth + 20 + 36 : M;
+  const xs = state.vertices.map(v => v.x), ys = state.vertices.map(v => v.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  // every level scales into one fixed square box, so the layout — and the
+  // nav arrows anchored to the box — is identical across all levels
+  const availW = W - leftPad - M;
+  // on narrow screens the card is a bottom sheet: reserve its band vertically
+  const bottomPad = cardOpen && W <= 720 ? cardEl.offsetHeight + 16 : 0;
+  const availH = H - 2 * M - bottomPad;
+  const box = Math.max(110, Math.min(availW - (W > 720 ? 150 : 110), availH));
+  const boxCX = leftPad + availW / 2;
+  const boxCY = M + availH / 2;
+  const scale = Math.min(box / Math.max(maxX - minX, 1e-9),
+                         box / Math.max(maxY - minY, 1e-9));
+  const X = x => boxCX + (x - (minX + maxX) / 2) * scale + view.x;
+  const Y = y => boxCY - (y - (minY + maxY) / 2) * scale + view.y;
+
+  const pos = {};
+  for (const v of state.vertices) pos[v.id] = [X(v.x), Y(v.y)];
+
+  const partners = partnerMap();
+  let out = "";
+
+  // faces: a sound quad is a set mosaic tile and gets a colour of its own;
+  // everything else — wrong number of sides, or a corner squashed too flat to
+  // hold glass — stays dull grey. `fresh` marks tiles set by *this* render, so
+  // the fill animation plays once rather than on every redraw.
+  const nowTiled = new Set();
+  const bows = bowMap(state.edges);
+  const toScreen = (x, y) => [X(x), Y(y)];
+  for (const f of state.faces) {
+    let cls = "dull";
+    if (f.degree === elementTarget() && f.quality >= state.quality_threshold) {
+      nowTiled.add(f.id);
+      cls = `tile ${tileClass(f.id)}${tiledFaces.has(f.id) ? "" : " fresh"}`;
+    }
+    out += `<path class="face ${cls}" d="${facePath(f.vertices, pos, bows, toScreen)}"></path>`;
+  }
+  tiledFaces = nowTiled;
+
+  hitEdges = [];
+  for (const c of edgeCurves(state.edges, pos, 26, bows ? toScreen : null)) {
+    const e = c.edge;
+    const d = `M ${c.x1} ${c.y1} Q ${c.cx} ${c.cy} ${c.x2} ${c.y2}`;
+    let dim = mode === "delete_edge" && !e.deletable ? "dim" : "";
+    let tutCls = "";
+    const ts = tutStep();
+    if (ts && ts.require) {
+      if (tutAllows("edge", e.id)) tutCls = "tut-target";
+      else dim = "dim";
+    }
+    const samples = [];
+    for (let t = 0; t <= 1.001; t += 0.125) {
+      const u = 1 - t;
+      samples.push([u * u * c.x1 + 2 * t * u * c.cx + t * t * c.x2,
+                    u * u * c.y1 + 2 * t * u * c.cy + t * t * c.y2]);
+    }
+    hitEdges.push({ id: e.id, deletable: e.deletable, samples });
+    // soft glow marks every legal target for the current tool
+    const eligible = mode === "insert_vertex"
+      || (mode === "delete_edge" && e.deletable);
+    const glow = eligible && !dim && !tutCls && tutAllows("edge", e.id) ? "glow" : "";
+    out += `<g class="${dim}">
+      <path class="edge ${e.boundary ? "boundary" : ""} ${tutCls} ${glow}" data-edge="${e.id}" d="${d}"></path>
+    </g>`;
+  }
+
+  hitVerts = [];
+  for (const v of state.vertices) {
+    const defect = v.degree - v.desired;
+    const cls = defect === 0 ? "ok" : Math.abs(defect) === 1 ? "off1" : "off2";
+    let actionable = false, dim = false;
+    if (mode === "delete_vertex") { actionable = v.deletable; dim = !v.deletable; }
+    if (mode === "insert_edge") {
+      actionable = true;
+      if (selectedVertex !== null && selectedVertex !== v.id) {
+        dim = !(partners[selectedVertex] && partners[selectedVertex].has(v.id));
+        actionable = !dim;
+      }
+    }
+    let tutCls = "";
+    const ts = tutStep();
+    if (ts) {
+      if (ts.require && ts.require.op === "insert_edge") {
+        if (tutAllows("vertex", v.id)) tutCls = "tut-target";
+        else dim = true;
+      } else if (ts.require) {
+        dim = false; // edge steps: leave vertices visible but inert
+      } else if (ts.vertex === v.id) {
+        tutCls = "tut-target"; // info-step spotlight
+      }
+    }
+    const sel = v.id === selectedVertex ? "selected" : "";
+    const [x, y] = pos[v.id];
+    const r = v.user ? 10 : 8.5;
+    hitVerts.push({ id: v.id, x, y, eligible: actionable });
+    // a corner squashed flat can never carry a tile — ring it red until fixed
+    const halo = v.quality < state.quality_threshold
+      ? `<circle class="vwash" cx="${x}" cy="${y}" r="25"
+           opacity="${Math.min(0.25, (state.quality_threshold - Math.max(v.quality, -1)) * 0.18).toFixed(2)}"></circle>
+         <circle class="vhalo" cx="${x}" cy="${y}" r="19"></circle>`
+      : "";
+    out += `<g class="${dim ? "dim" : ""}">
+      ${halo}
+      <circle class="vertex ${cls} ${v.user ? "user" : ""} ${sel} ${tutCls} ${
+        actionable && !dim && !tutCls && tutAllows("vertex", v.id) ? "glow" : ""}"
+              data-vertex="${v.id}" cx="${x}" cy="${y}" r="${r}">
+        <title>v${v.id} — degree ${v.degree} / desired ${v.desired}${v.user ? " — corner" : ""}</title>
+      </circle>
+      ${defect !== 0 ? `<text class="vlabel" x="${x}" y="${y + 3}">${defect > 0 ? "+" : ""}${defect}</text>` : ""}
+    </g>`;
+  }
+
+  svg.innerHTML = out;
+  hoverTarget = null;
+
+  const s = state.scores;
+  document.getElementById("s-vertex").textContent = s.vertex;
+  document.getElementById("s-par").textContent = state.par;
+  document.getElementById("s-quality").textContent = s.min_quality.toFixed(2);
+  document.getElementById("s-moves").textContent = state.moves;
+  document.getElementById("s-best").textContent = state.best ?? "–";
+  document.getElementById("r-score").classList.toggle("at-par", s.vertex === state.par);
+  document.getElementById("r-quality").classList.toggle("alert", s.min_quality < state.quality_threshold);
+  const locked = !!tut;
+  document.getElementById("undo").disabled = !state.can_undo;
+  document.getElementById("smoothbtn").disabled = locked;
+  document.getElementById("reset").disabled = locked;
+  document.getElementById("shape").disabled = locked;
+  document.getElementById("autosmooth").disabled = locked;
+  document.getElementById("hint").textContent = HINTS[mode];
+  const ts2 = tutStep();
+  document.getElementById("r-score").classList.toggle("tut-target", !!ts2 && ts2.chip === "r-score");
+  document.getElementById("r-par").classList.toggle("tut-target", !!ts2 && ts2.chip === "r-par");
+
+  const sel2 = document.getElementById("shape");
+  if (sel2.options.length === 0) {
+    for (const name of state.shapes) {
+      const o = document.createElement("option");
+      o.value = o.textContent = name;
+      sel2.appendChild(o);
+    }
+  }
+  sel2.value = state.shape;
+
+  const isWon = s.vertex === state.par && s.face === 0
+      && s.min_quality >= state.quality_threshold;
+  const shapes = state.shapes;
+  const idx = shapes.indexOf(state.shape);
+  const nextShape = shapes[(idx + 1) % shapes.length];
+  const prevShape = shapes[(idx - 1 + shapes.length) % shapes.length];
+  const nextBtn = document.getElementById("next");
+  const prevBtn = document.getElementById("prev");
+  nextBtn.classList.toggle("show", !tut);
+  prevBtn.classList.toggle("show", !tut);
+  nextBtn.classList.toggle("win", isWon);
+  nextBtn.title = "Next level: " + nextShape;
+  prevBtn.title = "Previous level: " + prevShape;
+  // arrows anchor to the fixed box, never to the mesh: globally constant
+  prevBtn.style.left = Math.max(boxCX - box / 2 - 70, 8) + "px";
+  nextBtn.style.left = Math.min(boxCX + box / 2 + 24, W - 66) + "px";
+  prevBtn.style.top = boxCY + "px";
+  nextBtn.style.top = boxCY + "px";
+  // sharing is offered only on a solved board — the replay ends on the win
+  document.getElementById("share").hidden = !isWon || !!tut;
+  if (isWon && !wasWon) {
+    confettiBurst();
+    recordRun(true);
+    logEvent("win", { moves: state.moves, new_record: state.new_record });
+    if (state.new_record) toast(`\u{1F3C6} New record: ${state.moves} moves`);
+  }
+  wasWon = isWon;
+
+  // the classic trap: at par with all quads, but a degenerate corner blocks
+  // the win. Teach it the moment it happens.
+  const isNearWin = !isWon && s.vertex === state.par && s.face === 0
+      && s.min_quality < state.quality_threshold;
+  if (isNearWin && !wasNearWin) {
+    wasNearWin = true;
+    logEvent("flat_corner_card", { min_quality: s.min_quality });
+    if (!tut) {
+      showCard("Good start!",
+        TUT_SVG.flatfix
+        + "<div>The numbers add up — but that new dot lies <b>flat</b> (180&deg;), too squished for a real tile. We can do a little better: a dot on every side, meeting in the middle.</div>",
+        "Keep going", hideCard, hideCard);
+    }
+  } else {
+    wasNearWin = isNearWin;
+  }
+}
+
+// --- share: the solve, replayed as a GIF -------------------------------------
+
+const SHARE_W = 440, SHARE_H = 500;
+const SHARE_TOP = 50, SHARE_FLOOR = 452; // board band; the rest is caption
+const SHARE_MAX_FRAMES = 32; // long solves are sampled down to keep the file sane
+// frame delays, in hundredths of a second
+const SHARE_HOLD_FIRST = 90, SHARE_STEP = 55, SHARE_HOLD_LAST = 260;
+const SHARE_MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
+const SHARE_SANS = '"Avenir Next", Seravek, "Segoe UI", -apple-system, sans-serif';
+const TAU = Math.PI * 2;
+
+// the colours the player is actually looking at, so their GIF carries their theme
+function shareTheme() {
+  const s = getComputedStyle(document.documentElement);
+  const v = n => s.getPropertyValue(n).trim();
+  return {
+    paper: v("--paper"), ink: v("--ink"), muted: v("--muted"), line: v("--line"),
+    edge: v("--edge"), edgeBdry: v("--edge-bdry"), ring: v("--vertex-ring"),
+    good: v("--good"), warn: v("--warn"), bad: v("--bad"),
+    dull: v("--face-dull"),
+    tileAlpha: parseFloat(v("--tile-alpha")) || 0.8,
+    tiles: Array.from({ length: TILE_HUES }, (_, i) => v(`--tile-${i}`)),
+  };
+}
+
+function shareFrames() {
+  const all = game.history();
+  if (all.length <= SHARE_MAX_FRAMES) return all;
+  // keep the first and last board, spread the rest evenly between them
+  const picked = [];
+  for (let i = 0; i < SHARE_MAX_FRAMES; i++) {
+    picked.push(all[Math.round((i * (all.length - 1)) / (SHARE_MAX_FRAMES - 1))]);
+  }
+  return picked;
+}
+
+// One transform for the whole replay, fitted to the union of every board, so
+// the mesh never jumps between moves.
+function shareLayout(frames) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const f of frames) {
+    for (const v of f.vertices) {
+      if (v.x < minX) minX = v.x;
+      if (v.x > maxX) maxX = v.x;
+      if (v.y < minY) minY = v.y;
+      if (v.y > maxY) maxY = v.y;
+    }
+  }
+  const pad = 36;
+  const bandH = SHARE_FLOOR - SHARE_TOP;
+  const span = Math.min(SHARE_W - 2 * pad, bandH - 2 * pad);
+  const scale = Math.min(span / Math.max(maxX - minX, 1e-9),
+                         span / Math.max(maxY - minY, 1e-9));
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  return {
+    X: x => SHARE_W / 2 + (x - cx) * scale,
+    Y: y => SHARE_TOP + bandH / 2 - (y - cy) * scale,
+    spread: Math.max(10, Math.round((26 * span) / 500)),
+  };
+}
+
+// Redraws the board the same way render() does, on a canvas instead of in SVG.
+function paintReplay(ctx, frame, layout, theme, meta) {
+  const { X, Y } = layout;
+  ctx.fillStyle = theme.paper;
+  ctx.fillRect(0, 0, SHARE_W, SHARE_H);
+
+  const pos = {};
+  for (const v of frame.vertices) pos[v.id] = [X(v.x), Y(v.y)];
+  const bows = bowMap(frame.edges);
+  const toScreen = bows ? (x, y) => [X(x), Y(y)] : null;
+
+  for (const f of frame.faces) {
+    ctx.beginPath();
+    const ids = f.vertices;
+    ctx.moveTo(pos[ids[0]][0], pos[ids[0]][1]);
+    for (let i = 0; i < ids.length; i++) {
+      const a = ids[i], b = ids[(i + 1) % ids.length];
+      const bow = bows && bows.get(Math.min(a, b) + "-" + Math.max(a, b));
+      const [x1, y1] = pos[a], [x2, y2] = pos[b];
+      if (bow) {
+        const [mx, my] = toScreen(bow[0], bow[1]);
+        ctx.quadraticCurveTo(2 * mx - (x1 + x2) / 2, 2 * my - (y1 + y2) / 2, x2, y2);
+      } else {
+        ctx.lineTo(x2, y2);
+      }
+    }
+    ctx.closePath();
+    if (f.degree === elementTarget() && f.quality >= frame.quality_threshold) {
+      const [hue, pale] = tileClass(f.id).split(" ");
+      ctx.fillStyle = theme.tiles[+hue.slice(1)];
+      ctx.globalAlpha = theme.tileAlpha - (pale ? 0.22 : 0);
+    } else {
+      ctx.fillStyle = theme.dull;
+      ctx.globalAlpha = 1;
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.lineCap = "round";
+  for (const c of edgeCurves(frame.edges, pos, layout.spread, toScreen)) {
+    ctx.beginPath();
+    ctx.moveTo(c.x1, c.y1);
+    ctx.quadraticCurveTo(c.cx, c.cy, c.x2, c.y2);
+    ctx.strokeStyle = c.edge.boundary ? theme.edgeBdry : theme.edge;
+    ctx.lineWidth = c.edge.boundary ? 3 : 2;
+    ctx.stroke();
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const v of frame.vertices) {
+    const [x, y] = pos[v.id];
+    if (v.quality < frame.quality_threshold) {
+      ctx.fillStyle = theme.bad;
+      ctx.globalAlpha = Math.min(0.25,
+        (frame.quality_threshold - Math.max(v.quality, -1)) * 0.18);
+      ctx.beginPath();
+      ctx.arc(x, y, 22, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = theme.bad;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(x, y, 17, 0, TAU);
+      ctx.stroke();
+    }
+    const defect = v.degree - v.desired;
+    ctx.beginPath();
+    ctx.arc(x, y, v.user ? 9 : 7.5, 0, TAU);
+    ctx.fillStyle = defect === 0 ? theme.good
+      : Math.abs(defect) === 1 ? theme.warn : theme.bad;
+    ctx.fill();
+    ctx.strokeStyle = theme.ring;
+    ctx.lineWidth = v.user ? 2.5 : 1.5;
+    ctx.stroke();
+    if (defect !== 0) {
+      ctx.fillStyle = theme.ring;
+      ctx.font = `700 9px ${SHARE_MONO}`;
+      ctx.fillText((defect > 0 ? "+" : "") + defect, x, y + 0.5);
+    }
+  }
+
+  // caption: the GIF has to explain itself wherever it gets pasted
+  ctx.strokeStyle = theme.line;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, SHARE_TOP - 0.5);
+  ctx.lineTo(SHARE_W, SHARE_TOP - 0.5);
+  ctx.moveTo(0, SHARE_FLOOR + 0.5);
+  ctx.lineTo(SHARE_W, SHARE_FLOOR + 0.5);
+  ctx.stroke();
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillStyle = theme.ink;
+  ctx.font = `700 14px ${SHARE_MONO}`;
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
+  ctx.fillText("MESH QUEST", 20, SHARE_TOP / 2);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+  ctx.textAlign = "right";
+  ctx.fillStyle = theme.muted;
+  ctx.font = `13px ${SHARE_SANS}`;
+  ctx.fillText(meta.shape, SHARE_W - 20, SHARE_TOP / 2);
+
+  const footY = (SHARE_FLOOR + SHARE_H) / 2;
+  const done = frame.moves === meta.moves;
+  ctx.textAlign = "left";
+  ctx.fillStyle = done ? theme.good : theme.muted;
+  ctx.font = done ? `700 14px ${SHARE_SANS}` : `13px ${SHARE_SANS}`;
+  ctx.fillText(done ? `Solved in ${meta.moves} moves` : `Move ${frame.moves}`,
+               20, footY);
+  ctx.textAlign = "right";
+  ctx.fillStyle = theme.muted;
+  ctx.font = `13px ${SHARE_SANS}`;
+  ctx.fillText(`score ${frame.scores.vertex} · par ${meta.par}`, SHARE_W - 20, footY);
+}
+
+let shareBlob = null, shareUrl = null, shareKey = "", shareBusy = false;
+
+function shareFileName() {
+  const slug = game.shape.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `mesh-quest-${slug}-${state.moves}-moves.gif`;
+}
+
+function shareStatus(text, progress) {
+  document.getElementById("share-status").textContent = text;
+  document.getElementById("share-bar").style.width =
+    Math.round(Math.max(0, Math.min(1, progress)) * 100) + "%";
+}
+
+const nextTick = () => new Promise(r => setTimeout(r, 0));
+
+async function buildShareGif() {
+  const box = document.getElementById("sharesheet");
+  const img = document.getElementById("share-img");
+  const key = `${game.shape}:${boardRevision}`;
+  if (shareBlob && key === shareKey) return; // already rendered this exact board
+  shareBusy = true;
+  img.hidden = true;
+  box.classList.add("working");
+  document.getElementById("share-save").disabled = true;
+  document.getElementById("share-send").disabled = true;
+  try {
+    shareStatus("Replaying your solve…", 0.02);
+    await nextTick();
+    const frames = shareFrames();
+    const layout = shareLayout(frames);
+    const theme = shareTheme();
+    const meta = { shape: game.shape, moves: state.moves, par: state.par };
+    const canvas = document.createElement("canvas");
+    canvas.width = SHARE_W;
+    canvas.height = SHARE_H;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    const pixels = [], delays = [];
+    for (let i = 0; i < frames.length; i++) {
+      paintReplay(ctx, frames[i], layout, theme, meta);
+      pixels.push(ctx.getImageData(0, 0, SHARE_W, SHARE_H).data);
+      delays.push(i === 0 ? SHARE_HOLD_FIRST
+        : i === frames.length - 1 ? SHARE_HOLD_LAST : SHARE_STEP);
+      shareStatus("Replaying your solve…", 0.02 + (0.28 * (i + 1)) / frames.length);
+      await nextTick();
+    }
+
+    const steps = gifEncodeSteps(pixels, SHARE_W, SHARE_H, { delays });
+    let step = steps.next();
+    while (!step.done) {
+      shareStatus("Encoding the GIF…", 0.3 + 0.7 * step.value);
+      await nextTick();
+      step = steps.next();
+    }
+
+    shareBlob = new Blob([step.value], { type: "image/gif" });
+    shareKey = key;
+    if (shareUrl) URL.revokeObjectURL(shareUrl);
+    shareUrl = URL.createObjectURL(shareBlob);
+    img.src = shareUrl;
+    img.hidden = false;
+    const kb = Math.round(shareBlob.size / 1024);
+    shareStatus(`${frames.length} frames · ${kb} KB`, 1);
+    document.getElementById("share-save").disabled = false;
+    document.getElementById("share-send").disabled = false;
+    logEvent("share_render", {
+      frames: frames.length, bytes: shareBlob.size, moves: state.moves,
+    });
+  } catch (e) {
+    shareStatus("Couldn't build the GIF — sorry!", 0);
+    logEvent("share_error", { error: String(e && e.message || e) });
+  } finally {
+    box.classList.remove("working");
+    shareBusy = false;
+  }
+}
+
+function openShare() {
+  document.getElementById("sharesheet").hidden = false;
+  logEvent("share_open", { moves: state.moves });
+  buildShareGif();
+}
+
+function closeShare() {
+  document.getElementById("sharesheet").hidden = true;
+}
+
+function confettiBurst() {
+  if (reducedMotion.matches) return;
+  const canvas = document.getElementById("confetti");
+  const stage = document.getElementById("stage");
+  canvas.width = stage.clientWidth;
+  canvas.height = stage.clientHeight;
+  const ctx = canvas.getContext("2d");
+  const style = getComputedStyle(document.documentElement);
+  // the finished mosaic, thrown in the air
+  const colors = Array.from({ length: TILE_HUES }, (_, i) =>
+    style.getPropertyValue(`--tile-${i}`).trim());
+  const parts = [];
+  for (let i = 0; i < 140; i++) {
+    parts.push({
+      x: canvas.width / 2 + (Math.random() - 0.5) * canvas.width * 0.5,
+      y: canvas.height * (0.25 + Math.random() * 0.2),
+      vx: (Math.random() - 0.5) * 9,
+      vy: -4 - Math.random() * 7,
+      w: 5 + Math.random() * 5,
+      h: 3 + Math.random() * 4,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.3,
+      color: colors[i % colors.length],
+    });
+  }
+  const t0 = performance.now();
+  function tick(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const alive = (t - t0) < 2600;
+    for (const p of parts) {
+      p.vy += 0.18; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - (t - t0) / 2600);
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) requestAnimationFrame(tick);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  requestAnimationFrame(tick);
+}
+
+// --- nearest-target picking -------------------------------------------------
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lsq = dx * dx + dy * dy;
+  const t = lsq ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lsq)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function pickTarget(mx, my) {
+  if (mode === "insert_vertex" || mode === "delete_edge") {
+    let best = null, bestDist = EDGE_PICK_RADIUS;
+    for (const e of hitEdges) {
+      if (mode === "delete_edge" && !e.deletable) continue;
+      if (!tutAllows("edge", e.id)) continue;
+      for (let i = 0; i + 1 < e.samples.length; i++) {
+        const d = distToSegment(mx, my, ...e.samples[i], ...e.samples[i + 1]);
+        if (d < bestDist) { bestDist = d; best = { kind: "edge", id: e.id }; }
+      }
+    }
+    return best;
+  }
+  let best = null, bestDist = VERTEX_PICK_RADIUS;
+  for (const v of hitVerts) {
+    if (!v.eligible) continue;
+    if (!tutAllows("vertex", v.id)) continue;
+    const d = Math.hypot(mx - v.x, my - v.y);
+    if (d < bestDist) { bestDist = d; best = { kind: "vertex", id: v.id }; }
+  }
+  return best;
+}
+
+function setHover(target) {
+  const svg = document.getElementById("canvas");
+  if (hoverTarget && (!target || target.kind !== hoverTarget.kind || target.id !== hoverTarget.id)) {
+    const old = svg.querySelector(
+      hoverTarget.kind === "edge"
+        ? `[data-edge="${hoverTarget.id}"]` : `circle[data-vertex="${hoverTarget.id}"]`);
+    if (old) old.classList.remove("near");
+  }
+  if (target) {
+    const el = svg.querySelector(
+      target.kind === "edge"
+        ? `[data-edge="${target.id}"]` : `circle[data-vertex="${target.id}"]`);
+    if (el) el.classList.add("near");
+  }
+  hoverTarget = target;
+  svg.classList.toggle("has-target", !!target);
+}
+
+function mousePos(e) {
+  const rect = document.getElementById("canvas").getBoundingClientRect();
+  return [e.clientX - rect.left, e.clientY - rect.top];
+}
+
+const canvasEl = document.getElementById("canvas");
+let panState = null;
+let suppressClick = false;
+
+canvasEl.addEventListener("mousemove", e => {
+  if (!state || panState?.moved) return;
+  setHover(pickTarget(...mousePos(e)));
+});
+canvasEl.addEventListener("mouseleave", () => setHover(null));
+canvasEl.addEventListener("pointerdown", e => {
+  if (!state) return;
+  // touch: no hover exists, so preview the picked target on finger-down;
+  // the click that follows on finger-up commits it
+  if (e.pointerType === "touch") setHover(pickTarget(...mousePos(e)));
+  panState = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false };
+  canvasEl.setPointerCapture(e.pointerId);
+});
+canvasEl.addEventListener("pointermove", e => {
+  if (!panState) return;
+  if (e.pointerType === "mouse" && !(e.buttons & 1)) return;
+  const dx = e.clientX - panState.sx, dy = e.clientY - panState.sy;
+  if (!panState.moved && Math.hypot(dx, dy) <= 5) return;
+  if (!panState.moved) {
+    panState.moved = true;
+    setHover(null);
+    canvasEl.classList.add("panning");
+  }
+  view.x = panState.vx + dx;
+  view.y = panState.vy + dy;
+  queueRender();
+});
+window.addEventListener("pointerup", () => {
+  if (panState?.moved) {
+    saveView();
+    suppressClick = true;
+    canvasEl.classList.remove("panning");
+  }
+  panState = null;
+});
+canvasEl.addEventListener("click", e => {
+  if (suppressClick) { suppressClick = false; return; }
+  if (!state) return;
+  const target = pickTarget(...mousePos(e));
+  if (!target) {
+    if (mode === "insert_edge" && selectedVertex !== null) { selectedVertex = null; render(); }
+    return;
+  }
+  if (target.kind === "edge") {
+    doOp(mode === "insert_vertex" ? "insert_vertex" : "delete_edge", { edge: target.id });
+  } else if (mode === "delete_vertex") {
+    doOp("delete_vertex", { vertex: target.id });
+  } else if (mode === "insert_edge") {
+    if (selectedVertex === null) { selectedVertex = target.id; render(); }
+    else if (selectedVertex === target.id) { selectedVertex = null; render(); }
+    else doOp("insert_edge", { a: selectedVertex, b: target.id });
+  }
+});
+
+function setMode(m, force) {
+  const s = tutStep();
+  if (s && !force && (!s.require || s.mode !== m)) {
+    toast("Follow the tutorial step — or skip it below");
+    return;
+  }
+  mode = m;
+  selectedVertex = null;
+  document.querySelectorAll(".mode").forEach(b =>
+    b.classList.toggle("active", b.dataset.mode === m));
+  if (state) render();
+}
+
+document.querySelectorAll(".mode").forEach(b =>
+  b.addEventListener("click", () => setMode(b.dataset.mode)));
+document.getElementById("undo").addEventListener("click", () => {
+  try { game.undo(); } catch (e) { toast(e.message); return; }
+  refresh();
+  runOps.pop();
+  logEvent("undo", { moves: state.moves });
+  tutCheck({ op: "undo", verts: [] });
+});
+document.getElementById("smoothbtn").addEventListener("click", () => {
+  game.smooth(3);
+  refresh();
+  // a smooth goes on the engine's undo stack, so it has to sit in the op list
+  // too or `undo` would pop the wrong entry and the replay would drift
+  runOps.push({ op: "smooth", verts: [], iterations: 3 });
+  logEvent("smooth");
+});
+function gotoShape(shape, evt) {
+  if (tut) tutEnd(); // defensive: a level change always exits the tutorial
+  hideCard(); // and dismisses whatever card was open
+  recordAttempt(evt || "level_change"); // keep the sequence before the board goes
+  game.reset(shape);
+  tiledFaces.clear(); // fresh board: its tiles get to animate in again
+  runOps = [];
+  refresh();
+  logEvent(evt);
+  maybeShowNote(state.shape);
+}
+
+document.getElementById("reset").addEventListener("click", () =>
+  gotoShape(document.getElementById("shape").value, "new_game"));
+document.getElementById("shape").addEventListener("change", e =>
+  gotoShape(e.target.value, "level_change"));
+document.getElementById("target").addEventListener("change", (e) => {
+  // The outline does not move; what each corner wants does, and so does par.
+  setElementTarget(Number(e.target.value));
+  applyTargetLabels();
+  gotoShape(document.getElementById("shape").value, "target_change");
+});
+
+function applyTargetLabels() {
+  const triangles = elementTarget() === 3;
+  const sub = document.querySelector(".sub");
+  if (sub) sub.textContent = triangles
+    ? "slice shapes into triangles" : "slice shapes into blocks";
+  document.body.dataset.target = triangles ? "triangle" : "quad";
+}
+applyTargetLabels();
+document.getElementById("next").addEventListener("click", () => {
+  const shapes = state.shapes;
+  gotoShape(shapes[(shapes.indexOf(state.shape) + 1) % shapes.length], "level_next");
+});
+document.getElementById("prev").addEventListener("click", () => {
+  const shapes = state.shapes;
+  gotoShape(shapes[(shapes.indexOf(state.shape) - 1 + shapes.length) % shapes.length], "level_prev");
+});
+document.getElementById("tut-open").addEventListener("click", tutStart);
+document.getElementById("star").addEventListener("click", () => logEvent("star_click"));
+
+// Heart: one per browser, so the counter reads "people who loved it" rather
+// than "clicks". Counted as a GoatCounter event on the public build; on builds
+// without analytics the button still gives feedback, it just isn't tallied.
+const heartBtn = document.getElementById("heart");
+let hearted = false;
+try { hearted = localStorage.getItem("meshquest-hearted") === "1"; } catch {}
+function paintHeart() {
+  heartBtn.classList.toggle("hearted", hearted);
+  heartBtn.querySelector(".glyph").innerHTML = hearted ? "&#9829;" : "&#9825;";
+  heartBtn.title = hearted ? "Thanks for the love!" : "Love it?";
+}
+paintHeart();
+heartBtn.addEventListener("click", () => {
+  if (hearted) { toast("\u2665 Already loved — thank you!"); return; }
+  hearted = true;
+  try { localStorage.setItem("meshquest-hearted", "1"); } catch {}
+  paintHeart();
+  heartBtn.classList.add("pop");
+  setTimeout(() => heartBtn.classList.remove("pop"), 600);
+  logEvent("heart");
+  if (window.goatcounter && typeof window.goatcounter.count === "function") {
+    window.goatcounter.count({ path: "heart", title: "Heart", event: true });
+  }
+  toast("\u2665 Thank you!");
+});
+document.getElementById("log-export").addEventListener("click", exportSolves);
+document.getElementById("share").addEventListener("click", openShare);
+document.getElementById("share-close").addEventListener("click", closeShare);
+document.getElementById("sharesheet").addEventListener("click", e => {
+  if (e.target.id === "sharesheet" && !shareBusy) closeShare(); // backdrop
+});
+document.getElementById("share-save").addEventListener("click", () => {
+  if (!shareBlob) return;
+  const a = document.createElement("a");
+  a.href = shareUrl;
+  a.download = shareFileName();
+  a.click();
+  logEvent("share_download", { bytes: shareBlob.size });
+  toast("Saved to your downloads");
+});
+// The native share sheet exists only on some browsers, and only for files they
+// accept; everywhere else the download button is the whole story.
+const shareSend = document.getElementById("share-send");
+shareSend.addEventListener("click", async () => {
+  if (!shareBlob) return;
+  const file = new File([shareBlob], shareFileName(), { type: "image/gif" });
+  try {
+    await navigator.share({
+      files: [file],
+      title: "Mesh Quest",
+      text: `${game.shape} solved in ${state.moves} moves — Mesh Quest`,
+    });
+    logEvent("share_native", { bytes: shareBlob.size });
+  } catch (e) {
+    if (e && e.name !== "AbortError") toast("Sharing isn't available here");
+  }
+});
+try {
+  const probe = new File([new Uint8Array(1)], "probe.gif", { type: "image/gif" });
+  shareSend.hidden = !(navigator.canShare && navigator.canShare({ files: [probe] }));
+} catch { shareSend.hidden = true; }
+
+window.addEventListener("resize", () => state && render());
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+  const keys = { 1: "insert_vertex", 2: "delete_vertex", 3: "insert_edge", 4: "delete_edge" };
+  if (keys[e.key]) setMode(keys[e.key]);
+  else if (e.key === "u") document.getElementById("undo").click();
+  else if (e.key === "s") document.getElementById("smoothbtn").click();
+  else if (e.key === "ArrowLeft") document.getElementById("prev").click();
+  else if (e.key === "ArrowRight") document.getElementById("next").click();
+  else if (e.key === "Escape" && !document.getElementById("sharesheet").hidden) {
+    if (!shareBusy) closeShare();
+  }
+  else if (e.key === " ") {
+    const nextBtn = document.getElementById("tut-next");
+    if (document.getElementById("tutcard").classList.contains("show")
+        && !nextBtn.classList.contains("hidden")) {
+      e.preventDefault();
+      nextBtn.click();
+    }
+  }
+});
+
+setMode("insert_vertex");
+refresh();
+let tutorialDone = false;
+try { tutorialDone = localStorage.getItem("meshquest-tutorial") === "done"; } catch {}
+if (!tutorialDone) tutStart();
+</script>
+</body>
+</html>

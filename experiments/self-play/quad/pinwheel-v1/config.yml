@@ -1,0 +1,205 @@
+########################################################################################
+# pinwheel-v1  --  can the agent learn a structure the generator never built?
+#
+# BASE
+#   experiments/self-play/quad/reference-v1, unchanged. That run is the baseline:
+#   129.0 of 135 over four passes, with straight-holes at 18.75/24 as the entire
+#   remaining gap.
+#
+# HYPOTHESIS
+#   straight-holes fails on domains whose hole is turned against its rim. Reaching
+#   par there needs a mesh that CIRCULATES -- the ring alternates between
+#   corner-facing and edge-facing quads, and the two handednesses are mirror
+#   images, so par requires breaking a symmetry the domain still has. The
+#   generator's own hole solutions measure chirality exactly 0.000 over 96
+#   samples; the two held-out domains the released agent misses measure 0.250 and
+#   0.500. If the structure being absent is why they fail, putting it in the
+#   training distribution should move straight-holes and nothing else.
+#
+# WHAT CHANGES, and why each is needed
+#   pinwheel seeds        the structure itself. Off by default; reached with
+#                         -pinwheel_probability. Calibrated at n=800 to 7.8% of
+#                         instances circulating, 18.6% with holes.
+#   gate untangle         the k=4 pinwheel -- the diamond-in-square connectivity --
+#                         sits at 0.196 under a Laplacian and the old 0.4 gate
+#                         refuses exactly the tightest case. The gate is also the
+#                         environment's own evaluator, so the generator and the
+#                         win test finally agree.
+#   -demo_generator       the anchor is 35% of PPO's distribution and was a fixed
+#                         pickle, so a new seed family would train the clone and
+#                         then vanish from reinforcement. Fresh batches instead.
+#   EvaluatorAngleEnv     the gate has to be in the ENV, not only the generator.
+#                         `-gate untangle` decides which demonstrations are kept;
+#                         the env's own is_at_par still asked a Laplacian for 0.4
+#                         min quality, and the k=4 pinwheel sits at 0.203. Staged
+#                         without this, PPO would give no par bonus, no
+#                         termination and a quality penalty at time-out for
+#                         producing exactly the structure being taught.
+#
+# CONFOUND, stated up front
+#   This changes three things at once. If it lands above 129 we will not know
+#   which did it. The clean ablation is the gate alone first, at another 4M steps;
+#   the fast path is this, and ablate afterwards. Chosen deliberately, not by
+#   omission.
+#
+# READ BEFORE TRUSTING A RESULT
+#   The metric's sd is 1.6 and a single best-of-5 pass carries about +/-3, so score
+#   with `score_suites.py -repeats 4` and compare against reference-v1's per-suite
+#   passes, not its total. straight-holes is the suite to watch; everything else
+#   is saturated and can only go down.
+#
+# LEAKAGE, stated up front
+#   The k=4 pinwheel IS the Diamond-in-square connectivity, and Diamond bracket and
+#   Diamond tab are held out. check_leakage.py matches outline signatures so the
+#   DOMAINS are disjoint, but "the agent learned a structure it had never seen"
+#   stops being the claim once the structure is in training. This is a curriculum
+#   result and has to be written as one.
+#
+# OBSERVATIONS
+#   LANDED at 135.00 of 135 -- every domain at par, four passes, zero spread,
+#   4M steps in 6h14m on six workers. straight-holes went 18.75/24 to 24/24 and
+#   is saturated; all fifteen Mesh Quest levels are solved GREEDILY, twelve of
+#   the fourteen with a known optimum in exactly the expert's move count. It
+#   passed reference-v1's final score by 1.5M steps.
+#
+#   THE METRIC CHANGED WITH THE POLICY, and the cross-check matters more than
+#   the headline. Both checkpoints under both metrics:
+#
+#                        old (laplacian 0.4)   new (untangle 0.1)
+#     reference ckpt           129.00                133.00
+#     pinwheel ckpt            126.70                135.00
+#
+#   So the gate alone is worth +4, the policy adds +2 under the new metric, and
+#   the policy is 2.3 WORSE under the old one. Mechanically: a 0.1 degeneracy
+#   bar removes the pressure to draw well and the policy took it. The env
+#   untangles IN PLACE at par states, so the agent ends on a mesh already fixed
+#   for it and never has to produce a well-shaped one -- laplacian quality mean
+#   0.696 against the baseline's 0.799, and two domains inverted once the
+#   in-loop untangling is taken away.
+#
+#   Every solved mesh is still usable: worst domain 0.416 after untangling,
+#   nothing near the 0.1 gate. And against Gmsh it is not close -- 135/135 at
+#   par where the best variant manages 20/135, with the fewest elements (10.2)
+#   and the best element quality (0.758) of any method.
+#
+#   NEXT: raise degeneracy_threshold from 0.1 to about 0.3. It keeps the reason
+#   the evaluator exists -- measuring topology rather than the Laplacian -- while
+#   restoring the quality pressure this run gave away.
+########################################################################################
+
+environment:
+  name: EvaluatorAngleEnv
+  # geometry stays in the loop -- ten features, Laplacian between moves, the same
+  # eight global entries as AngleEnvWithLength. Only the win test moves: at a
+  # topologically at-par state the mesh is untangled IN PLACE and accepted on a
+  # DEGENERACY bar rather than on what a Laplacian could draw. Without this the
+  # k=4 pinwheel (0.203 under a Laplacian, 0.4 gate) is refused -- the run would
+  # teach the structure in cloning and punish it in reinforcement. The untangled
+  # mesh is kept because resmooth_env never returns something worse than it was
+  # given, so the agent carries on from the better drawing of its own topology.
+  degeneracy_threshold: 0.1
+  evaluator: untangle
+  untangle_iterations: 4
+  warm_start_iterations: 5
+  evaluator_slide: laplacian   # 3 ms and 0.414 at k=4, against 101 ms and 0.660
+                               # for the optimised slide; both clear a 0.1 bar,
+                               # and the cheap one errs toward refusing
+  initializer:
+    name: Mixture
+    weights: [0.17, 0.17, 0.16, 0.17, 0.17, 0.16]
+    components:
+      # --- hole-free: the three families the v1 study measured -----------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        ratio: 5
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 24
+      # --- with holes: new in this study --------------------------------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: [1, 2]
+        ratio: 8
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: [1, 2]
+        ratio: 8
+        n_ops: [1, 2]
+        n_mods: [0, 2]
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 1
+        ratio: 6
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 20
+  face_desired_degree: 4
+  template_size: 160
+  max_edge_addition_steps: 3
+  max_steps_factor: 3.0
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.10
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: true
+  terminate_on_overflow: false
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 250000
+total_timesteps: 4_000_000

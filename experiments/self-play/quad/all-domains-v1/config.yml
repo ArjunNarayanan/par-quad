@@ -1,0 +1,170 @@
+########################################################################################
+# all-domains-v1  --  every domain, and quality in the objective
+#
+# THE OBJECTIVE CHANGES HERE. Until now it was "reach par". It is now "get the
+# irregularity as low as you can while keeping element quality acceptable",
+# because par is not always reachable: `utilities/build_par0_mesh.py` builds the
+# par-0 mesh of a domain outright, and for three of the six curved par-0 Mesh
+# Quest levels it INVERTS -- Hook -0.61, Skillet -1.00, Boot -0.90. Chasing par
+# on those is chasing a mesh no smoother can draw, and the agent was already
+# declining to: on Hook it returns a +0.53 mesh two off par, and the old reward
+# gave it nothing for that.
+#
+# HOW
+#   `quality_potential_weight: 3.0` puts the shortfall against
+#   `quality_threshold` INTO the potential rather than charging it once at the
+#   end. At gamma 1 the return is the same either way -- it telescopes -- but in
+#   the potential every move that degrades quality is paid for when it happens.
+#   The vocabulary is monotone and there is no stop action, so an agent that has
+#   run out of useful moves keeps refining; this is what makes that cost
+#   something. The term is gated on `face_score == 0`: before every face is a
+#   quad there is no mesh to judge, and a raw polygon with a reflex corner
+#   scores -1.
+#
+#   Scale, in units the irregularity term shares (1.0 = one defect):
+#     quality >= 0.40  no charge
+#     quality  = 0.20  0.60
+#     quality  = -0.60 3.00
+#
+#   `par_bonus` drops 1.0 -> 0.25. A full-size bonus is a cliff at par that
+#   outweighs any quality difference, which is exactly the trade this run is
+#   meant to make honestly. It stays nonzero because par with good quality is
+#   still the best outcome.
+#
+# THE DOMAINS
+#   Everything: straight and polycube, hole-free and holed, plus geo2d's curved
+#   `rounded` preset both ways. Curved holes work as of today -- the slit
+#   construction is the same one a straight hole gets and the arcs ride through
+#   it. Weights are even across the six components rather than tuned.
+#
+# WHAT TO WATCH
+#   Not "solve rate". Two numbers: the fraction of domains meshed at acceptable
+#   quality, and the mean irregularity excess over par among those. A run that
+#   trades a point of excess for a collapsed mesh is going backwards, and the
+#   old scoreboard could not see it.
+#
+# BASE
+#   experiments/self-play/quad/pinwheel-v1/config.yml.
+#
+# OBSERVATIONS
+#   (fill in)
+########################################################################################
+
+environment:
+  name: EvaluatorAngleEnv
+  # geometry stays in the loop -- ten features, Laplacian between moves, the same
+  # eight global entries as AngleEnvWithLength. Only the win test moves: at a
+  # topologically at-par state the mesh is untangled IN PLACE and accepted on a
+  # DEGENERACY bar rather than on what a Laplacian could draw. Without this the
+  # k=4 pinwheel (0.203 under a Laplacian, 0.4 gate) is refused -- the run would
+  # teach the structure in cloning and punish it in reinforcement. The untangled
+  # mesh is kept because resmooth_env never returns something worse than it was
+  # given, so the agent carries on from the better drawing of its own topology.
+  degeneracy_threshold: 0.1
+  evaluator: untangle
+  untangle_iterations: 4
+  warm_start_iterations: 5
+  evaluator_slide: laplacian   # 3 ms and 0.414 at k=4, against 101 ms and 0.660
+                               # for the optimised slide; both clear a 0.1 bar,
+                               # and the cheap one errs toward refusing
+  initializer:
+    name: Mixture
+    weights: [0.17, 0.17, 0.16, 0.17, 0.17, 0.16]
+    components:
+      # --- straight, the distribution the released agent already handles -----
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: [1, 2]
+        ratio: 8
+        max_corners: 24
+      # --- curved, hole-free and holed --------------------------------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: rounded
+        n_holes: 0
+        allow_curves: true
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: rounded
+        n_holes: [1, 2]
+        allow_curves: true
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: [1, 2]
+        ratio: 8
+        max_corners: 24
+  face_desired_degree: 4
+  template_size: 200
+  max_edge_addition_steps: 3
+  max_steps_factor: 3.0
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.10
+  # par is demoted: on curved domains it is often unreachable, and an all-quad
+  # mesh with good elements beats a par mesh with bad ones
+  vertex_potential_weight: 0.5
+  par_bonus: 0.25
+  # SHAPE quality, not angle: the angle metric is blind to aspect ratio and
+  # scores a comb of paper-thin quads perfectly. Measured on this agent's own
+  # meshes, angle reads 0.707 where geo2d reads 0.056. An engineering mesh is
+  # judged on shape, so that is what the gate and the reward now use.
+  quality_metric: shape
+  quality_potential_weight: 3.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: true
+  terminate_on_overflow: false
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 250000
+total_timesteps: 4_000_000

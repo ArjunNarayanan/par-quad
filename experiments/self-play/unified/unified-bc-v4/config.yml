@@ -1,0 +1,97 @@
+########################################################################################
+# unified-bc-v4  —  unfiltered training data; the fifteen levels become a dev set
+#
+# NOTES
+#   The holdout exclusion was there to prove the method works rather than memorises,
+#   and it did its job: v3 trained on filtered data and still solved the rectilinear
+#   levels greedily. With that established the filter is removed, so the generator's
+#   full output is available for training and the test set can grow instead.
+#
+#   THIS CHANGES WHAT THE FIFTEEN LEVELS MEASURE. The generator builds polyominoes and
+#   eight of the levels ARE small polyominoes: unfiltered, the v3 triangle data contains
+#   514 instances sharing a held-out signature and 105 that are the same domain to within
+#   0.0 degrees. A score on those levels is therefore a DEVELOPMENT score from here on,
+#   not a held-out one, and must not be reported as evidence of generalisation. The
+#   held-out role passes to the external 2D geometry benchmark once it lands.
+#
+#   `utilities/check_leakage.py` and `drop_holdout_domains` are kept deliberately. A real
+#   geometry set will NOT be automatically disjoint -- L-brackets, T-sections and I-beams
+#   are rectilinear and the generator builds rectilinear domains -- so overlap has to be
+#   measured on the new benchmark too, and the filtered/unfiltered pair is what makes the
+#   measurement meaningful.
+#
+# BASE
+#   experiments/self-play/unified/unified-bc-v3 — identical data and learner; the only
+#   difference is that -exclude_holdout is not passed.
+#
+# HYPOTHESIS
+#   Scores on the fifteen rise relative to v3, and the rise is the size of the leak
+#   rather than a gain in capability. The v3-vs-v4 gap is the quantity of interest.
+#
+# CHANGELOG
+#   v4  no holdout exclusion; levels reclassified as a development set
+#
+# OBSERVATIONS
+#   (filled in when the run ends)
+########################################################################################
+
+environment:
+  name: AngleEnvWithLength
+  initializer:
+    name: RandomPolygon
+    min_polygon_degree: 5
+    max_polygon_degree: 16
+    scale: 0.6
+    min_quality: 0.4
+    target_angle: 90
+  face_desired_degree: 4
+  template_size: 96
+  max_edge_addition_steps: 3
+  max_steps_factor: 2.5
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: potential
+  step_cost: 0.05
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  global_observation: true
+  target_in_observation: true
+  resample_if_at_par: true
+  terminate_on_overflow: true
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 3.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: 1.0e-4
+
+holdout:
+  every: 100000
+  n_samples: 8
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 500000
+total_timesteps: 3_000_000

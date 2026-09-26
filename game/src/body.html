@@ -1,0 +1,70 @@
+<header>
+  <div class="brand">
+    <h1>MESH QUEST</h1>
+    <div class="sub">slice shapes into blocks</div>
+  </div>
+  <div class="readouts">
+    <div class="readout" id="r-score"><div class="label">Score</div><div class="value" id="s-vertex">–</div></div>
+    <div class="readout" id="r-par"><div class="label">Par</div><div class="value" id="s-par">–</div></div>
+    <div class="readout" id="r-quality"><div class="label">Quality</div><div class="value" id="s-quality">–</div></div>
+    <div class="readout"><div class="label">Moves</div><div class="value" id="s-moves">–</div></div>
+    <div class="readout"><div class="label">Best</div><div class="value" id="s-best">–</div></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="controls">
+    <select id="shape" aria-label="Level"></select>
+    <select id="target" aria-label="Element type">
+      <option value="4">Quads</option>
+      <option value="3">Triangles</option>
+    </select>
+    <button id="reset">New game</button>
+  </div>
+</header>
+<div class="toolbar">
+  <button class="mode" data-mode="insert_vertex"><kbd>1</kbd>+ Vertex</button>
+  <button class="mode" data-mode="delete_vertex"><kbd>2</kbd>&minus; Vertex</button>
+  <button class="mode" data-mode="insert_edge"><kbd>3</kbd>+ Edge</button>
+  <button class="mode" data-mode="delete_edge"><kbd>4</kbd>&minus; Edge</button>
+  <button id="undo"><kbd style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;opacity:.55;margin-right:5px">u</kbd>Undo</button>
+  <button id="smoothbtn"><kbd style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;opacity:.55;margin-right:5px">s</kbd>Smooth</button>
+  <label class="auto"><input type="checkbox" id="autosmooth" checked> auto-smooth</label>
+  <span class="hint" id="hint"></span>
+</div>
+<div id="stage">
+  <svg id="canvas"></svg>
+  <canvas id="confetti"></canvas>
+  <button id="prev" class="lvlarrow" title="Previous level">&larr;</button>
+  <button id="next" class="lvlarrow" title="Next level">&rarr;</button>
+  <div class="credit">Mesh Quest &copy; 2026 Arjun Narayanan &middot; part of <a href="https://arjunnarayanan.github.io/par-quad/" target="_blank" rel="noopener">Playing to Par</a> &middot; <a href="https://github.com/ArjunNarayanan/par-quad/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></div>
+  <div class="corner-actions">
+    <button id="share" title="Share your solution as a GIF" hidden><span class="glyph">&#9654;</span> <span class="label">Share solve</span></button>
+    <button id="heart" title="Love it?"><span class="glyph">&#9825;</span> <span class="label">Love it</span></button>
+    <a id="star" href="https://github.com/ArjunNarayanan/par-quad" target="_blank" rel="noopener">&#9733; Star on GitHub</a>
+    <button id="log-export" title="Download a replayable log of every move you made"><span class="glyph">&#10515;</span> <span class="label">Export moves</span></button>
+  </div>
+  <div id="tutcard">
+    <button id="tut-skip" title="Minimize">&minus;</button>
+    <div class="eyebrow" id="tut-eyebrow"></div>
+    <div class="body" id="tut-body"></div>
+    <div class="actions">
+      <button id="tut-next">Next</button>
+    </div>
+  </div>
+  <button id="tut-open" title="Tutorial">&#128075;</button>
+  <div id="sharesheet" hidden>
+    <div id="sharebox" role="dialog" aria-modal="true" aria-labelledby="share-eyebrow">
+      <button id="share-close" title="Close">&times;</button>
+      <div class="eyebrow" id="share-eyebrow">YOUR SOLVE</div>
+      <div id="share-stage">
+        <img id="share-img" alt="Animated replay of your solution" hidden>
+        <div id="share-track"><div id="share-bar"></div></div>
+        <div id="share-status">Rendering&hellip;</div>
+      </div>
+      <div id="share-actions">
+        <button id="share-save" disabled>Download GIF</button>
+        <button id="share-send" disabled hidden>Share&hellip;</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+</div>

@@ -1,0 +1,113 @@
+########################################################################################
+# semicircle-v1  --  can the agent decompose a genuinely curved domain at all?
+#
+# A SMOKE TEST, not a result. One domain, every episode: a semicircle carried
+# natively -- one straight diameter, two quarter arcs, nothing discretised.
+# Warm-started from the pinwheel checkpoint and asked to overfit. If it cannot
+# solve ONE curved domain given unlimited attempts at it, the curved work needs
+# rethinking before any of it goes near a benchmark.
+#
+# THE DOMAIN
+#   three vertices, wants [2, 2, 3], par 2
+#
+#   At either end of the diameter the circle's tangent is perpendicular to it,
+#   so the material turns through 90 degrees and that corner wants two. At the
+#   apex the two arcs join smoothly: 180 degrees, wants three, exactly like a
+#   flat point on a straight edge.
+#
+#   par 2 means a perfectly regular mesh is IMPOSSIBLE. The agent has to place
+#   two units of irregularity, in the right place, on a boundary that curves.
+#
+# WHAT IS BEING ASKED
+#   Not generalisation -- the opposite. The domain never changes, so any failure
+#   is the agent being unable to represent or reach the answer, not a
+#   distribution gap. That is what makes it worth running first.
+#
+# NO ANCHOR
+#   `-anchor none`. The certified instances would dilute the one thing being
+#   measured, and there are no certified CURVED demonstrations worth mixing in:
+#   a bent instance's solution is identical to its straight original's, so it
+#   teaches nothing about curvature (see src/bend_outline.py).
+#
+# WHAT WOULD FALSIFY THE CURVED WORK
+#   Failure here. With one domain, a warm start and a 10x step budget there is
+#   no distributional excuse left.
+#
+# OBSERVATIONS
+#   (filled in as the run lands)
+########################################################################################
+
+environment:
+  name: EvaluatorAngleEnv
+  # geometry stays in the loop -- ten features, Laplacian between moves, the same
+  # eight global entries as AngleEnvWithLength. Only the win test moves: at a
+  # topologically at-par state the mesh is untangled IN PLACE and accepted on a
+  # DEGENERACY bar rather than on what a Laplacian could draw. Without this the
+  # k=4 pinwheel (0.203 under a Laplacian, 0.4 gate) is refused -- the run would
+  # teach the structure in cloning and punish it in reinforcement. The untangled
+  # mesh is kept because resmooth_env never returns something worse than it was
+  # given, so the agent carries on from the better drawing of its own topology.
+  degeneracy_threshold: 0.1
+  evaluator: untangle
+  untangle_iterations: 4
+  warm_start_iterations: 5
+  evaluator_slide: laplacian   # 3 ms and 0.414 at k=4, against 101 ms and 0.660
+                               # for the optimised slide; both clear a 0.1 bar,
+                               # and the cheap one errs toward refusing
+  initializer:
+    name: Custom
+    factory: "src.curved_levels:make_initializer"
+    name_of_level: semicircle
+  face_desired_degree: 4
+  template_size: 160
+  max_edge_addition_steps: 3
+  max_steps_factor: 10.0
+  min_max_steps: 40
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.10
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: true
+  terminate_on_overflow: false
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 250000
+total_timesteps: 4_000_000

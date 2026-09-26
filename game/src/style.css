@@ -1,0 +1,803 @@
+/* Mesh Quest — Copyright 2026 Arjun Narayanan.
+ * Licensed under the MIT License (see LICENSE). */
+:root {
+  --paper: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #17242e;
+  --muted: #5d6b77;
+  --line: #d7dee5;
+  --grid: rgba(31, 111, 214, 0.055);
+  --grid-major: rgba(31, 111, 214, 0.1);
+  --accent: #1f6fd6;
+  --halo: rgba(31, 111, 214, 0.16);
+  --glow: rgba(31, 111, 214, 0.75);
+  --good: #2b8a4d;
+  --warn: #d9962e;
+  --bad: #cf4433;
+  /* mosaic: a finished quad is a coloured tile, anything else is dull glass */
+  --tile-0: #f0a08c;
+  --tile-1: #f0c47a;
+  --tile-2: #a8d18a;
+  --tile-3: #7fcfc4;
+  --tile-4: #93bfe8;
+  --tile-5: #b3aae0;
+  --tile-6: #e7a6c4;
+  --tile-7: #ddd08a;
+  --tile-alpha: 0.82;
+  --face-dull: rgba(147, 161, 174, 0.22);
+  --edge: #46545f;
+  --edge-bdry: #17242e;
+  --vertex-ring: #ffffff;
+  --shadow: rgba(23, 36, 46, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #101820;
+    --panel: #18232d;
+    --ink: #e4ecf2;
+    --muted: #8b99a5;
+    --line: #2a3743;
+    --grid: rgba(90, 162, 240, 0.05);
+    --grid-major: rgba(90, 162, 240, 0.09);
+    --accent: #5aa2f0;
+  --halo: rgba(90, 162, 240, 0.22);
+  --glow: rgba(90, 162, 240, 0.9);
+    --good: #43b06a;
+    --warn: #e2a94f;
+    --bad: #e26055;
+    --tile-0: #c8664f;
+    --tile-1: #c99544;
+    --tile-2: #6a9e56;
+    --tile-3: #3f9a92;
+    --tile-4: #4b82c4;
+    --tile-5: #7f6fbe;
+    --tile-6: #b45f8e;
+    --tile-7: #a68a45;
+    --tile-alpha: 0.6;
+    --face-dull: rgba(140, 156, 172, 0.14);
+    --edge: #9fb0bd;
+    --edge-bdry: #dfe9f1;
+    --vertex-ring: #101820;
+    --shadow: rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101820;
+  --panel: #18232d;
+  --ink: #e4ecf2;
+  --muted: #8b99a5;
+  --line: #2a3743;
+  --grid: rgba(90, 162, 240, 0.05);
+  --grid-major: rgba(90, 162, 240, 0.09);
+  --accent: #5aa2f0;
+  --halo: rgba(90, 162, 240, 0.22);
+  --glow: rgba(90, 162, 240, 0.9);
+  --good: #43b06a;
+  --warn: #e2a94f;
+  --bad: #e26055;
+  --tile-0: #c8664f;
+  --tile-1: #c99544;
+  --tile-2: #6a9e56;
+  --tile-3: #3f9a92;
+  --tile-4: #4b82c4;
+  --tile-5: #7f6fbe;
+  --tile-6: #b45f8e;
+  --tile-7: #a68a45;
+  --tile-alpha: 0.6;
+  --face-dull: rgba(140, 156, 172, 0.14);
+  --edge: #9fb0bd;
+  --edge-bdry: #dfe9f1;
+  --vertex-ring: #101820;
+  --shadow: rgba(0, 0, 0, 0.45);
+}
+:root[data-theme="light"] {
+  --paper: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #17242e;
+  --muted: #5d6b77;
+  --line: #d7dee5;
+  --grid: rgba(31, 111, 214, 0.055);
+  --grid-major: rgba(31, 111, 214, 0.1);
+  --accent: #1f6fd6;
+  --halo: rgba(31, 111, 214, 0.16);
+  --glow: rgba(31, 111, 214, 0.75);
+  --good: #2b8a4d;
+  --warn: #d9962e;
+  --bad: #cf4433;
+  --tile-0: #f0a08c;
+  --tile-1: #f0c47a;
+  --tile-2: #a8d18a;
+  --tile-3: #7fcfc4;
+  --tile-4: #93bfe8;
+  --tile-5: #b3aae0;
+  --tile-6: #e7a6c4;
+  --tile-7: #ddd08a;
+  --tile-alpha: 0.82;
+  --face-dull: rgba(147, 161, 174, 0.22);
+  --edge: #46545f;
+  --edge-bdry: #17242e;
+  --vertex-ring: #ffffff;
+  --shadow: rgba(23, 36, 46, 0.14);
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Avenir Next", Seravek, "Segoe UI", -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+}
+header, .toolbar, #stage {
+  user-select: none;
+  -webkit-user-select: none;
+}
+#stage { touch-action: manipulation; }
+button, select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+header {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 12px 20px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand h1 {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-wrap: balance;
+}
+.brand .sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.readouts { display: flex; gap: 2px; align-items: stretch; }
+.readout {
+  min-width: 66px;
+  padding: 4px 12px 5px;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+.readout:first-child { border-left: none; }
+.readout .label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.readout .value {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.readout.at-par .value { color: var(--good); }
+.readout.alert .value { color: var(--bad); }
+.spacer { flex: 1; }
+.controls { display: flex; gap: 8px; align-items: center; }
+
+select, button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+}
+button:hover, select:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.mode kbd {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  opacity: 0.55;
+  margin-right: 5px;
+}
+.mode.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.mode.active kbd { opacity: 0.7; }
+label.auto {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  cursor: pointer;
+}
+.hint { font-size: 12.5px; color: var(--muted); margin-left: 6px; }
+
+#stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+}
+#canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#canvas.panning { cursor: grabbing; }
+#canvas.panning * { pointer-events: none; }
+#confetti { position: absolute; inset: 0; pointer-events: none; }
+
+/* the board reads as a mosaic under lead came: a sound quad is a set tile and
+   takes a colour of its own, everything unfinished stays dull grey glass */
+.face { stroke: none; }
+.face.dull { fill: var(--face-dull); }
+.face.tile { fill-opacity: var(--tile-alpha); }
+/* .pale is the same glass cut thinner — it doubles the palette so neighbouring
+   tiles that draw the same hue still read as two tiles */
+.face.tile.pale { fill-opacity: calc(var(--tile-alpha) - 0.22); }
+.t0 { fill: var(--tile-0); }
+.t1 { fill: var(--tile-1); }
+.t2 { fill: var(--tile-2); }
+.t3 { fill: var(--tile-3); }
+.t4 { fill: var(--tile-4); }
+.t5 { fill: var(--tile-5); }
+.t6 { fill: var(--tile-6); }
+.t7 { fill: var(--tile-7); }
+/* a tile is only "fresh" on the render that first colours it, so the set
+   animation plays once per tile rather than on every redraw */
+.face.fresh {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tile-set 0.45s ease-out;
+}
+@keyframes tile-set {
+  0% { opacity: 0; transform: scale(0.68); }
+  55% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.edge { stroke: var(--edge); stroke-width: 2; fill: none; pointer-events: none; }
+.edge.boundary { stroke: var(--edge-bdry); stroke-width: 3; }
+.edge.glow { filter: drop-shadow(0 0 4px var(--glow)); }
+.vertex.glow { filter: drop-shadow(0 0 5px var(--glow)); }
+.edge.near { stroke: var(--accent) !important; stroke-width: 5 !important; }
+.vertex { stroke: var(--vertex-ring); stroke-width: 1.5; }
+.vertex.user { stroke: var(--edge-bdry); stroke-width: 2.5; }
+.vertex.ok { fill: var(--good); }
+.vertex.off1 { fill: var(--warn); }
+.vertex.off2 { fill: var(--bad); }
+.vertex.near { stroke: var(--accent); stroke-width: 4; }
+.vertex.selected { stroke: var(--accent); stroke-width: 4; }
+.vlabel {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--vertex-ring);
+  text-anchor: middle;
+  pointer-events: none;
+}
+/* a corner squashed flat can never carry a tile: ring it in red until fixed */
+.vwash { fill: var(--bad); pointer-events: none; }
+.vhalo {
+  fill: none;
+  stroke: var(--bad);
+  stroke-width: 2.5;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 5px var(--bad));
+  animation: halo-throb 1.7s ease-in-out infinite;
+}
+@keyframes halo-throb {
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.14); opacity: 1; }
+}
+.dim { opacity: 0.25; pointer-events: none; }
+#canvas.has-target { cursor: pointer; }
+
+#toast {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  max-width: 80%;
+}
+#toast.show { opacity: 0.95; }
+
+.lvlarrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 12px var(--shadow);
+  display: none;
+  transition: transform 0.15s;
+}
+.lvlarrow.show { display: block; }
+.lvlarrow:hover {
+  transform: translateY(-50%) scale(1.1);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+#next.win {
+  background: var(--good);
+  border-color: var(--good);
+  color: #fff;
+  width: 60px;
+  height: 60px;
+  font-size: 27px;
+  box-shadow: 0 6px 18px var(--shadow);
+}
+
+.corner-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#heart {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#heart .glyph { font-size: 14px; }
+#heart:hover { color: var(--bad); border-color: var(--bad); transform: translateY(-1px); }
+#heart.hearted { color: var(--bad); border-color: var(--bad); }
+#heart.pop .glyph { animation: heart-pop 0.5s ease-out; display: inline-block; }
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.6); }
+  100% { transform: scale(1); }
+}
+/* offered only on a solved board, so it gets the win colour */
+#share {
+  font-size: 12.5px;
+  color: #fff;
+  background: var(--good);
+  border: 1px solid var(--good);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#share .glyph { font-size: 11px; }
+#share:hover { transform: translateY(-1px); filter: brightness(1.08); }
+#share[hidden] { display: none; }
+
+#sharesheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(23, 36, 46, 0.5);
+  backdrop-filter: blur(2px);
+}
+#sharesheet[hidden] { display: none; }
+#sharebox {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px 16px 14px;
+  box-shadow: 0 16px 40px var(--shadow);
+}
+#sharebox .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+#share-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+#share-close:hover { color: var(--ink); }
+/* the frame keeps its height while rendering, so nothing jumps when the GIF lands */
+#share-stage {
+  position: relative;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+#share-img {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+#share-img[hidden] { display: none; }
+#share-track {
+  width: 100%;
+  max-width: 300px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+#sharebox:not(.working) #share-track { visibility: hidden; }
+#share-bar {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+#share-status { font-size: 12px; color: var(--muted); }
+#share-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 13px;
+}
+#share-actions button {
+  flex: 1;
+  font-size: 14px;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+#share-save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+#share-save:disabled, #share-send:disabled { opacity: 0.45; }
+#share-send[hidden] { display: none; }
+
+#star {
+  display: inline-block;
+  font-size: 12.5px;
+  text-decoration: none;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#star:hover { color: var(--ink); border-color: var(--accent); transform: translateY(-1px); }
+#star:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* the diagnosis channel: it has to be findable without being told where it is,
+   so it is a labelled pill like its neighbours rather than a lone glyph */
+#log-export {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: transform 0.15s;
+}
+#log-export .glyph { font-size: 14px; }
+#log-export:hover { color: var(--ink); border-color: var(--ink); transform: translateY(-1px); }
+
+#tutcard {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(260px, 24vw, 360px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px 16px 12px;
+  box-shadow: 0 10px 30px var(--shadow);
+  display: none;
+}
+#tutcard.show { display: block; }
+#tutcard .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+#tutcard .body { font-size: 15px; line-height: 1.45; }
+#tutcard .actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 13px;
+  gap: 4px;
+}
+#tut-next {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-size: 14.5px;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+#tut-next.hidden { display: none; }
+#tut-skip {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+#tut-skip:hover { color: var(--ink); }
+#tut-open {
+  position: absolute;
+  left: 20px;
+  top: calc(50% + 64px);
+  transform: translateY(-50%);
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 36px;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 0 0 5px var(--halo), 0 4px 12px var(--shadow);
+  animation: halo-breathe 2.8s ease-in-out infinite;
+  transition: transform 0.15s;
+}
+#tut-open:hover { transform: translateY(-50%) scale(1.1); border-color: var(--accent); }
+@keyframes halo-breathe {
+  0%, 100% { box-shadow: 0 0 0 4px var(--halo), 0 4px 12px var(--shadow); }
+  50% { box-shadow: 0 0 0 9px var(--halo), 0 4px 12px var(--shadow); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #tut-open { animation: none; }
+}
+#tutcard.show ~ #tut-open { display: none; }
+@media (max-width: 720px) {
+  #tutcard {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    transform: none;
+    width: auto;
+    padding: 11px 13px 9px;
+    border-radius: 12px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  #tutcard .eyebrow { font-size: 11px; margin-bottom: 7px; }
+  #tutcard .body { font-size: 14px; line-height: 1.4; }
+  #tutcard svg { max-height: 76px; margin-bottom: 7px; }
+  #tutcard .actions { margin-top: 9px; }
+  #tut-next { font-size: 14px; padding: 9px 12px; }
+  #tut-skip { font-size: 21px; top: 5px; right: 6px; }
+  #tutcard.show ~ #toast { bottom: 46vh; }
+  /* card open: hand the header/toolbar space to the board */
+  body.card-open > .toolbar { display: none; }
+  body.card-open > header { display: none; }
+  body.card-open.chip-step > header { display: flex; }
+  #tut-open { top: auto; bottom: 14px; left: 14px; transform: none; }
+  #tut-open:hover { transform: none; }
+}
+
+/* tutorial card illustrations */
+#tutcard svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+  margin-bottom: 10px;
+}
+.tvis-line { stroke: var(--edge); stroke-width: 2.5; fill: none; }
+.tvis-dot { fill: var(--accent); }
+.tvis-blush { fill: var(--bad); }
+/* the .tN hue classes above colour these; .dN only staggers them */
+.tvis-tile { opacity: 0; animation: tvis-tile 2.7s infinite; }
+.tvis-tile.d2 { animation-delay: 0.35s; }
+.tvis-tile.d3 { animation-delay: 0.7s; }
+@keyframes tvis-tile { 0% { opacity: 0; } 30%, 80% { opacity: 0.8; } 100% { opacity: 0; } }
+.tvis-ray {
+  stroke: var(--accent);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tvis-draw 3s infinite;
+}
+.tvis-ray.r2 { animation-delay: 0.3s; }
+.tvis-ray.r3 { animation-delay: 0.6s; }
+.tvis-ray.r4 { animation-delay: 0.9s; }
+@keyframes tvis-draw { 0% { stroke-dashoffset: 1; } 45%, 90% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
+.tvis-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tvis-pop 1.8s ease-in-out infinite;
+}
+@keyframes tvis-pop { 0%, 15% { transform: scale(0); } 50%, 85% { transform: scale(1); } 100% { transform: scale(0); } }
+.tvis-draw {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tvis-draw 2s ease-in-out infinite;
+}
+.tvis-good {
+  fill: var(--good);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tvis-pop 2.4s ease-in-out infinite;
+}
+.tvis-good.g2 { animation-delay: 0.25s; }
+.tvis-good.g3 { animation-delay: 0.5s; }
+.tvis-cell {
+  stroke: var(--paper);
+  opacity: 0;
+  animation: tvis-tile 2.6s infinite;
+}
+.tvis-cell.pale { fill-opacity: 0.6; }
+.tvis-pulse { animation: tutpulse 1.3s ease-in-out infinite; }
+.tvis-spoke { stroke: var(--edge); stroke-width: 2; }
+.tvis-ok-label {
+  fill: var(--good);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: ui-monospace, Menlo, monospace;
+}
+.tvis-flat-label {
+  fill: var(--bad);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: ui-monospace, Menlo, monospace;
+}
+.tvis-badge { fill: var(--accent); }
+.tvis-badge-text {
+  fill: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: ui-monospace, Menlo, monospace;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tvis-tile, .tvis-cell, .tvis-ray, .tvis-pop, .tvis-draw, .tvis-good { animation: none; }
+  .tvis-tile, .tvis-cell { opacity: 0.8; }
+  .tvis-ray, .tvis-draw { stroke-dashoffset: 0; }
+}
+
+@keyframes tutpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.edge.tut-target {
+  stroke: var(--accent) !important;
+  stroke-width: 6 !important;
+  animation: tutpulse 1.3s ease-in-out infinite;
+}
+.vertex.tut-target {
+  stroke: var(--accent) !important;
+  stroke-width: 5 !important;
+  animation: tutpulse 1.3s ease-in-out infinite;
+}
+.readout.tut-target { box-shadow: 0 0 0 2px var(--accent); border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .edge.tut-target, .vertex.tut-target { animation: none; }
+}
+
+.credit {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 46%;
+}
+.credit a { color: var(--muted); }
+.credit a:hover { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .face.fresh { animation: none; }
+  .vhalo { animation: none; opacity: 0.9; }
+  #heart.pop .glyph { animation: none; }
+  #next { transition: none; }
+  #toast { transition: none; }
+}
+
+/* touch devices: no hover previews to explain, no keyboard */
+@media (hover: none) {
+  .mode kbd, #undo kbd, #smoothbtn kbd { display: none; }
+  .hint { display: none; }
+}
+
+/* compact phone layout */
+@media (max-width: 720px) {
+  header { padding: 8px 12px 6px; gap: 8px; row-gap: 4px; }
+  .brand h1 { font-size: 14px; letter-spacing: 0.16em; }
+  .brand .sub { display: none; }
+  .readouts {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+  .readout { min-width: 0; flex: 1; padding: 2px 6px 3px; }
+  .readout .value { font-size: 16px; }
+  .controls { margin-left: auto; }
+  select, button { padding: 8px 10px; }
+  .toolbar { padding: 6px 8px; gap: 6px; }
+  .toolbar .mode {
+    flex: 1;
+    min-height: 42px;
+    padding: 6px 2px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  label.auto { font-size: 12px; }
+  .credit { display: none; }
+  .corner-actions { right: 12px; bottom: 12px; gap: 6px; }
+  #star, #heart, #share, #log-export { font-size: 11.5px; padding: 6px 10px; }
+  #heart .label, #log-export .label { display: none; }
+  /* a narrow corner can't hold four pills: the star yields to the share button
+     for as long as there is a solve to share */
+  #share:not([hidden]) ~ #star { display: none; }
+  body.card-open .corner-actions { display: none; }
+  .lvlarrow { width: 52px; height: 52px; font-size: 22px; }
+  #next.win { width: 64px; height: 64px; font-size: 30px; }
+}

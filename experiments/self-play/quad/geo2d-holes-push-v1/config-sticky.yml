@@ -1,0 +1,165 @@
+########################################################################################
+# geo2d-holes-push-v1  --  the winning arm of warm-vs-cold-2x2, run long
+#
+# NOTES
+#   Phase two of the night's plan: once the 2x2 has answered which start and which
+#   centering rule wins, the winner gets the rest of the machine time. Three changes
+#   from the 2x2 arm, all aimed at the metric rather than at the comparison:
+#     * holes are 50% of the mixture, up from 35%, because that is where the headroom
+#       is -- models/geo2d-warm-ppo-v1 scores 23/24, 24/24, 24/24 on the hole-free
+#       suites at the held-out seed and 19/24, 14/24 on the two hole suites;
+#     * `-anchor mixture` puts the certified domains back in the rollouts, which the
+#       2x2 deliberately left out so that "warm start" meant only the initial weights.
+#       It is also what keeps the Mesh Quest domains in distribution;
+#     * eight million steps instead of one.
+#
+# BASE
+#   experiments/self-play/quad/warm-vs-cold-2x2 (the winning arm's config).
+#
+# HYPOTHESIS
+#   Beats models/geo2d-warm-ppo-v1's 104/120 on the five geo2d suites, with the gain
+#   concentrated in polycube-holes and straight-holes, and holds 15/15 on Mesh Quest.
+#
+# CHANGELOG
+#   v1  holes 35% -> 50%, anchor mixture at 0.25, 1M -> 8M steps
+#
+# OBSERVATIONS
+#   Continued from warm-vs-cold-2x2/warm-sticky at 1.003M steps. Critic calibration
+#   0.400 -> 0.335: the reward scale carried over, so this is a continuation, not a
+#   re-fit. Stopped at 2.09M on a wall-clock budget, NOT at convergence -- the
+#   training-mixture solve rate was still climbing, 0.692 -> 0.75-0.79, on a mixture
+#   that had just got harder (holes 35% -> 50%).
+#
+#   Best-of-5 against par, held-out seed 7, 135 domains:
+#
+#       checkpoint      straight polycube small p-holes s-holes  MQ    total
+#       0.75M             20/24    24/24  24/24  20/24  15/24  15/15  118/135
+#       1.50M  (shipped)  23/24    24/24  24/24  21/24  15/24  13/15  120/135
+#       (reference) geo2d-warm-ppo-v1 at 8.1M steps                   119/135
+#
+#   One domain over the previous model is not a result by itself. What is: the two
+#   hole suites go 33/48 -> 36/48 while the hole-free three are unchanged at 71/72,
+#   and it took 2.5M steps against 8.1M. The previous model never saw a hole because
+#   the bridge could not represent one, so this is new capability that cost nothing
+#   on the old distribution.
+#
+#   Mesh Quest went the other way, 15/15 -> 13/15. The demonstration anchor at weight
+#   0.2 did not hold those domains in distribution across 1.5M steps. Worth trying a
+#   higher weight, or a holdout-selected checkpoint, before assuming it is a real
+#   trade.
+#
+#   CHECKPOINT SELECTION was done on a dev set (geo2d seed 0), where 0.75M and 1.50M
+#   tied at 119/135; the later one was taken by the neutral rule of preferring more
+#   training. The seed-7 numbers above were never used to choose between them.
+#
+#   Packaged as models/geo2d-holes-push-v1/. Launch command:
+#     venv/bin/python workflows/train_warm_ppo.py \
+#       -config experiments/self-play/quad/geo2d-holes-push-v1/config-sticky.yml \
+#       -checkpoint experiments/.../warm-vs-cold-2x2/warm-sticky/warm_ppo_model.zip \
+#       -num_envs 6 -torch_threads 6 -anchor mixture -demos data/instances_holes_v1.pkl \
+#       -demo_probability 0.2 -critic_warmup 20 -total_timesteps 8000000 -seed 0
+#   Note that SB3 restarts the step counter on load, so -total_timesteps counts from
+#   zero for the continuation, not from the checkpoint's own step count.
+########################################################################################
+
+environment:
+  name: AngleEnvWithLength
+  initializer:
+    name: Mixture
+    weights: [0.17, 0.17, 0.16, 0.17, 0.17, 0.16]
+    components:
+      # --- hole-free: the three families the v1 study measured -----------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        ratio: 5
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 24
+      # --- with holes: new in this study --------------------------------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: [1, 2]
+        ratio: 8
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: [1, 2]
+        ratio: 8
+        n_ops: [1, 2]
+        n_mods: [0, 2]
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 1
+        ratio: 6
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 20
+  face_desired_degree: 4
+  template_size: 160
+  max_edge_addition_steps: 3
+  max_steps_factor: 2.5
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.05
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: true
+  terminate_on_overflow: true
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 750000
+total_timesteps: 8_000_000

@@ -1,0 +1,246 @@
+########################################################################################
+# geo2d-long-v1  --  the best configuration so far, run long
+#
+# NOTES
+#   Everything this repository has learned, in one run: cloned warm start, sticky_face
+#   centering, holes at half the mixture, the certified demonstrations anchored into
+#   the rollouts, and a linearly decaying learning rate. Continues
+#   models/geo2d-holes-push-v1/agent.zip rather than starting over, so the 2.5M steps
+#   already spent are not thrown away.
+#
+#   THE STEP BUDGET GOES 2.5 -> 5.0 x the initial half-edge count. `terminate_at_par`
+#   is on, so a solved episode ends the moment it is solved and a larger budget costs
+#   nothing on the episodes that succeed -- only the failures run longer. Measured at
+#   evaluation time, raising the factor to 6.0 was worth +3 domains of 72 on the
+#   shipped model, and 4.0 was worth nothing, so the gain is real but small and sits
+#   at the top of the range. Training at the new factor matters as much as evaluating
+#   at it, because `progress = num_steps / max_steps` is one of the global observation
+#   features: a policy trained at 2.5 and evaluated at 6.0 is reading a feature off
+#   its training distribution.
+#
+#   Caveat on the same change: `is_at_par()` includes the quality gate, so a mesh that
+#   is topologically finished but below `quality_threshold` does NOT terminate, and
+#   the agent keeps editing an already-optimal mesh until the budget runs out. Four of
+#   the shipped model's thirteen held-out failures are exactly that case. If the longer
+#   budget makes those worse rather than better, that is where it will show.
+#
+#   The demonstration anchor is 0.35, not the 0.2 the shipped model used:
+#   geo2d-holes-push-v2 showed 0.2 lets the Mesh Quest levels slide 15/15 -> 13/15
+#   across 1.5M steps, and drift compounds with run length, so a long run wants the
+#   heavier anchor. It costs about two geo2d domains for the two levels it holds; the
+#   totals were indistinguishable at 120/135 either way.
+#
+# BASE
+#   experiments/self-play/quad/geo2d-holes-push-v1 (config-sticky).
+#
+# HYPOTHESIS
+#   Past 120/135. The headroom is the seven held-out domains that are more than three
+#   defects from par at the step limit, which is a capability gap rather than a budget
+#   one, plus whatever the larger budget buys on the two that were close.
+#
+# CHANGELOG
+#   v1  max_steps_factor 2.5 -> 5.0; anchor 0.2 -> 0.35; checkpoints every 250k;
+#       12M steps
+#
+#   RESTARTED at 2.18M steps, from warm_ppo_2003040_steps.zip of the first attempt
+#   (archived as experiments/self-play/quad/geo2d-long-v0-oldslit, scores in
+#   out/long-v0-oldslit). The first attempt trained against a broken generator:
+#   `_place_slit` anchored slits on convex 90-degree corners, where the forced
+#   minimum degree of three exceeds the two such a corner wants, so par was
+#   unreachable on 6% of training starts and about a quarter of the held-out hole
+#   domains. Its checkpoint scores -- 124, 120, 121, 122, 116, 123, 123 of 135 --
+#   are against a different, partly impossible problem and are NOT comparable with
+#   anything after this point.
+#
+#   RESTARTED AGAIN at 1.50M, from warm_ppo_1503048_steps.zip (archived with its log
+#   and checkpoints as experiments/self-play/quad/geo2d-long-v1-oldslitrule, scores in
+#   out/long-v1-oldslitrule). That attempt trained against slits chosen by "the nearest
+#   corner that can absorb the edge", which still ran long diagonals across the domain;
+#   the generator now cuts perpendicular to the nearest boundary edge and anchors
+#   mid-edge. Its readings -- 126, 120, 126, 121, 125, 122 of 135 -- are against the
+#   older generator, and the last of them was scored against the NEW one while training
+#   on the old, so none of them are comparable with what follows.
+#
+#   RESTARTED a third time at 1.25M, from warm_ppo_1253052_steps.zip (archived with
+#   its checkpoints and log as experiments/self-play/quad/geo2d-long-v2-factor5, scores
+#   in out/long-v2-factor5), with max_steps_factor 5.0 -> 3.0 and step_cost 0.05 -> 0.10.
+#
+#   WHY: the 5.0 budget bought one extra solve of ten and 58% more elements. Solutions
+#   ran 75-85 moves on domains the agent finishes in about 20 when it finishes at all,
+#   and the meshes grew until four of seven remaining failures ended on TEMPLATE
+#   OVERFLOW at 161-162 half-edges against a 160 template rather than on the step limit.
+#   The obvious reading -- that the template is the blocker -- is wrong, and the sweep
+#   says so: at template 224 the overflows fall 6/24 -> 1/24 and at 320 to 0/24, while
+#   straight-holes stays at 15, 15, 14 of 24. Given more room the agent simply refines
+#   more and still does not finish, so the overflow is a symptom of over-refinement and
+#   not its cause. The repair is to stop the over-refinement, not to accommodate it.
+#
+#   step_cost doubles alongside because `normalized` mode charges step_cost/max_steps
+#   per move, so raising the factor had quietly HALVED the per-move penalty; 0.10 at
+#   factor 3.0 restores roughly what 0.05 bought at 2.5.
+#
+#   The factor-5.0 readings -- baseline 122 then 124, 124, 121, 124, 122 of 135 over
+#   1.25M steps -- are flat, and are against a different step budget than what follows.
+#
+#   HOW BIG IS A REAL DIFFERENCE? Six evaluations of ONE checkpoint
+#   (warm_ppo_753060) on the same 135 domains, varying only rollout randomness:
+#       totals 123, 125, 126, 127, 127, 127   mean 125.8   sd 1.6   spread 4
+#       per suite sd: straight 1.2, straight-holes 0.9, polycube 0.4,
+#                     polycube-holes 0.4, straight-small 0.0 (saturated)
+#   So a single best-of-5 reading carries about +/-3 at 95%, and NO difference
+#   below three domains is measurable from one evaluation of one checkpoint.
+#   Most checkpoint-to-checkpoint movement in this log is sampling noise, the
+#   "regression" in `straight` included -- three domains is exactly its spread.
+#   What does survive is the phase comparison, because averaging six to eight
+#   checkpoints takes the standard error to about 0.65: this checkpoint's mean of
+#   125.8 against phase 3's 122.8 is roughly three sigma, so the 3x budget with
+#   the doubled step cost is a real gain. Run utilities/measure_metric_noise.py
+#   before believing any single-evaluation comparison.
+#
+#   RUN COMPLETE, stopped at 10.2M of 12M as converged. The last ten checkpoints
+#   read 129, 131, 127, 128, 133, 130, 130, 128, 130, 130 of 135 -- every value
+#   inside the metric's own sd of 1.6, so flat. Training solve rate 0.928, mean
+#   episode 18.9 moves (from 38.3 when the 3x budget started).
+#
+#   The 8.75M checkpoint verified over FOUR passes: 131.5 of 135, per-suite spread
+#   0 everywhere but straight-holes, which spreads 1 around 20.5 of 24. straight,
+#   polycube, straight-small and polycube-holes are all 24/24; Mesh Quest 15/15.
+#   Packaged as models/geo2d-long-v1/. The whole remaining gap is 3.5 domains of
+#   straight-holes -- the family carrying both 45-degree chamfers and holes.
+#
+#   WHY THOSE FAIL, as far as it has been traced. The agent reaches a
+#   topologically perfect mesh and then walks off it. Five things are true at once
+#   in that state: no single legal move preserves face_score 0 and vertex_score par
+#   (a chord through a quad leaves a triangle, a vertex insert leaves a pentagon),
+#   so fixing geometry requires a multi-move detour; the potential is purely
+#   topological, so every step of that detour is punished; quality enters the reward
+#   only as one terminal penalty; the sticky centre ties on every integer key and
+#   parks on the lowest half-edge id, nowhere near the bad element; and the only
+#   local geometric feature is the corner angle. Measured on straight-holes #19: at
+#   move 28 the mesh is face 0, vertex score exactly par, quality 0.257, and the
+#   episode runs on to end at f1/v+1.
+#
+#   The quality gate is also measuring the smoother rather than the mesh. In-loop
+#   smoothing is a plain Laplacian; geo2d's untangler recovers the SAME topology
+#   from -1.000 to 0.613 on one domain and 0.000 to 0.707 on another. Rescoring the
+#   gate after untangling is worth 0 to 2 domains at suite scale -- much less than a
+#   hand-picked probe of five failures suggested, which is the same selection bias
+#   that inflated the slit-fix numbers.
+#
+#   NEXT: remove smoothing from the loop entirely and make the problem purely
+#   topological, with an evaluator that untangles the agent's par-topology candidate
+#   and only then accepts it. Tested off-distribution at smooth_iterations 0, the
+#   topology the agent reaches is UNCHANGED (11/12 and 12/12 on two suites) while
+#   untangled quality lands at 0.53 to 0.75 -- so the smoother is carrying nothing
+#   the topology needs. Two open design questions recorded before building it: the
+#   accept/reject handback is not Markov unless the observation carries a "rejected"
+#   bit, since at-par-accepted and at-par-rejected are otherwise the same state; and
+#   an angle-based degeneracy gate is blind to aspect ratio, so a 1x10 rectangle as
+#   one quad scores 1.0 and nothing would discourage combs of thin quads, which
+#   refinement cannot repair.
+#
+# OBSERVATIONS
+#   (filled in as the run lands)
+########################################################################################
+
+environment:
+  name: AngleEnvWithLength
+  initializer:
+    name: Mixture
+    weights: [0.17, 0.17, 0.16, 0.17, 0.17, 0.16]
+    components:
+      # --- hole-free: the three families the v1 study measured -----------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 0
+        ratio: 5
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 24
+      # --- with holes: new in this study --------------------------------------
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: polycube
+        n_holes: [1, 2]
+        ratio: 8
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: [1, 2]
+        ratio: 8
+        n_ops: [1, 2]
+        n_mods: [0, 2]
+        max_corners: 24
+      - name: Custom
+        factory: "src.geo2d_bridge:make_initializer"
+        preset: straight
+        n_holes: 1
+        ratio: 6
+        n_ops: [1, 2]
+        n_mods: [0, 1]
+        max_corners: 20
+  face_desired_degree: 4
+  template_size: 160
+  max_edge_addition_steps: 3
+  max_steps_factor: 3.0
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.10
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: true
+  terminate_on_overflow: false
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 250000
+total_timesteps: 12_000_000

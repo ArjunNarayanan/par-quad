@@ -1,0 +1,134 @@
+########################################################################################
+# curved-overfit-v1  --  can PPO close the curved gap at all?
+#
+# A SMOKE TEST, and an OVERFIT one: the forty domains trained on are the forty
+# scored on. A number from this run is NOT a generalisation number and must not
+# be reported as one. What it separates is why a curved domain fails:
+#
+#   still fails when that domain IS the distribution -> representation or
+#                                                       optimisation
+#   succeeds                                         -> distribution, and the
+#                                                       fix is more of the right data
+#
+# THE SET
+#   geo2d `rounded`, 8-14 sides, hole-free, the first forty by seed. The
+#   released pinwheel checkpoint is at par on 28 of them and produces an
+#   all-quad mesh on 40 of 40, so the critic has signal to work with and there
+#   are twelve concrete failures to move (`src.curved_suite.FAILING`).
+#
+# WHAT TO WATCH
+#   Eleven of those twelve miss par by EXACTLY TWO, under a monotone vocabulary
+#   where degrees only ever rise. That reads as one misplaced defect pair rather
+#   than a mesh that went wrong globally. `utilities/score_curved_suite.py`
+#   reports the twelve separately from the forty for that reason: a run can lift
+#   the aggregate by getting better at domains it already solved.
+#
+# WHY THIS IS ONLY NOW WORTH MEASURING
+#   Three arc bugs were fixed today and all three corrupted curved GEOMETRY
+#   rather than curved topology -- a clockwise arc projected its own start point
+#   onto its end, the untangler left a solved mesh up to 0.25 off its own
+#   boundary, and deleting a vertex on a curve lost the curve. The evaluator's
+#   gate and the quality penalty both read that geometry, so any earlier curved
+#   training was learning through a distorted evaluator.
+#
+# ELEMENT QUALITY IS IN THE REWARD, on every ending:
+#   quality_penalty * max(0, quality_threshold - min_element_quality). The two
+#   bars differ deliberately -- degeneracy_threshold 0.1 is what is_at_par
+#   ACCEPTS, quality_threshold 0.4 is what the reward CHARGES against -- so a
+#   mesh at 0.15 counts as solved and still costs 0.25 of return.
+#
+# BASE
+#   experiments/self-play/quad/pinwheel-v1/config.yml, copied. Only the
+#   initializer, the template size and the step budget differ.
+#
+# CHANGELOG
+#   - initializer: the six-way straight Mixture -> src.curved_suite:make_initializer
+#   - template_size 160 -> 200: curved domains carry more control points, and the
+#     window has to reach what the action space can act on
+#   - resample_if_at_par: false -- a fixed suite must not silently drop a domain
+#     that happens to start at par
+#   - launched with `-anchor none`: every certified instance is straight-edged,
+#     and mixing them in would dilute the one thing being measured
+#
+# OBSERVATIONS
+#   (fill in)
+########################################################################################
+
+environment:
+  name: EvaluatorAngleEnv
+  # geometry stays in the loop -- ten features, Laplacian between moves, the same
+  # eight global entries as AngleEnvWithLength. Only the win test moves: at a
+  # topologically at-par state the mesh is untangled IN PLACE and accepted on a
+  # DEGENERACY bar rather than on what a Laplacian could draw. Without this the
+  # k=4 pinwheel (0.203 under a Laplacian, 0.4 gate) is refused -- the run would
+  # teach the structure in cloning and punish it in reinforcement. The untangled
+  # mesh is kept because resmooth_env never returns something worse than it was
+  # given, so the agent carries on from the better drawing of its own topology.
+  degeneracy_threshold: 0.1
+  evaluator: untangle
+  untangle_iterations: 4
+  warm_start_iterations: 5
+  evaluator_slide: laplacian   # 3 ms and 0.414 at k=4, against 101 ms and 0.660
+                               # for the optimised slide; both clear a 0.1 bar,
+                               # and the cheap one errs toward refusing
+  initializer:
+    name: Custom
+    factory: "src.curved_suite:make_initializer"
+    count: 40
+    min_sides: 8
+    max_sides: 14
+    with_holes: false
+    preset: rounded
+  face_desired_degree: 4
+  template_size: 200
+  max_edge_addition_steps: 3
+  max_steps_factor: 3.0
+  min_max_steps: 12
+  smooth_iterations: 5
+  face_degree_threshold: 15
+  vertex_degree_threshold: 8
+  reward_mode: normalized
+  step_cost: 0.10
+  vertex_potential_weight: 1.0
+  par_bonus: 1.0
+  quality_penalty: 1.0
+  quality_threshold: 0.4
+  allow_digon: false
+  allow_delete: false
+  deterministic_center: true
+  center_mode: sticky_face
+  global_observation: true
+  target_in_observation: false
+  resample_if_at_par: false
+  terminate_on_overflow: false
+
+feature_extractor:
+  type: Convolution
+  output_features: 96
+  number_of_layers: 4
+
+policy:
+  use_critic: True
+  ortho_init: False
+
+PPO:
+  gamma: 1.0
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+  gae_lambda: 1.0
+  ent_coef: 5.0e-3
+  vf_coef: 0.5
+  clip_range: 0.2
+  max_grad_norm: 1.0
+  learning_rate: lin_1.0e-4
+  target_kl: 0.03
+
+holdout:
+  every: 200000
+  n_samples: 5
+  beam: 0
+
+solve_rate_window: 10000
+checkpoint_every: 250000
+total_timesteps: 4_000_000

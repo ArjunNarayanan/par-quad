@@ -1,0 +1,479 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mesh Quest</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100vh; display: flex; flex-direction: column;
+    background: #f6f7f9; color: #1c2530;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 10px 18px; background: #fff; border-bottom: 1px solid #e2e6ea;
+  }
+  h1 { font-size: 18px; font-weight: 700; margin-right: 6px; }
+  .chips { display: flex; gap: 10px; align-items: center; }
+  .chip {
+    background: #eef1f4; border-radius: 8px; padding: 5px 12px;
+    text-align: center; min-width: 70px;
+  }
+  .chip .label { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: #6b7683; }
+  .chip .value { font-size: 17px; font-weight: 700; }
+  .chip.main { background: #1c2530; color: #fff; }
+  .chip.main .label { color: #aab4bf; }
+  .chip.main.perfect { background: #1e8e3e; }
+  .chip.bad { background: #fbe3e3; }
+  .chip.bad .value { color: #b3261e; }
+  .spacer { flex: 1; }
+  select, button {
+    font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px;
+    border: 1px solid #ccd3da; background: #fff; cursor: pointer;
+  }
+  button:hover { background: #f0f3f6; }
+  button:disabled { opacity: .4; cursor: default; }
+  .toolbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 18px; background: #fff; border-bottom: 1px solid #e2e6ea;
+  }
+  .mode { border: 1px solid #ccd3da; }
+  .mode.active { background: #1c2530; color: #fff; border-color: #1c2530; }
+  .toolbar kbd {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10.5px; opacity: .55; margin-right: 5px;
+  }
+  .mode.active kbd { opacity: .7; }
+  .hint { font-size: 12.5px; color: #6b7683; margin-left: 8px; }
+  label.auto { font-size: 13px; display: flex; gap: 5px; align-items: center; cursor: pointer; }
+  #stage { flex: 1; position: relative; overflow: hidden; }
+  svg { width: 100%; height: 100%; display: block; }
+
+  .face { stroke: none; }
+  .face.d4 { fill: #e9f5ec; }
+  .face.d3 { fill: #e3edf8; }
+  .face.d2 { fill: #fbe3e3; }
+  .face.dbig { fill: #fdf1dd; }
+  .face.degen { fill: #f6c9c5; }
+  .edge { stroke: #4a5764; stroke-width: 2; fill: none; pointer-events: none; }
+  .edge.boundary { stroke: #1c2530; stroke-width: 3; }
+  .edge.near { stroke: #0b6bcb !important; stroke-width: 5 !important; }
+  .vertex.near { stroke: #0b6bcb; stroke-width: 4; }
+  svg.edge-mode .vertex { pointer-events: none; }
+  svg.has-target { cursor: pointer; }
+  .vertex { stroke: #fff; stroke-width: 1.5; }
+  .vertex.user { stroke: #1c2530; stroke-width: 2.5; }
+  .vertex.ok { fill: #1e8e3e; }
+  .vertex.off1 { fill: #e8a13c; }
+  .vertex.off2 { fill: #d0453e; }
+  .vertex.actionable { cursor: pointer; }
+  .vertex.selected { stroke: #0b6bcb; stroke-width: 4; }
+  .vlabel { font-size: 9px; font-weight: 700; fill: #fff; text-anchor: middle;
+            pointer-events: none; }
+  .dim { opacity: .25; pointer-events: none; }
+
+  #toast {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: #1c2530; color: #fff; padding: 9px 16px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none;
+    max-width: 80%;
+  }
+  #toast.show { opacity: .95; }
+  #confetti { position: absolute; inset: 0; pointer-events: none; }
+  #next {
+    position: absolute; transform: translateY(-50%);
+    width: 58px; height: 58px; border-radius: 50%; border: none;
+    background: #1e8e3e; color: #fff; font-size: 28px; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(30,142,62,.45); display: none;
+    transition: transform .15s;
+  }
+  #next.show { display: block; }
+  #next:hover { transform: translateY(-50%) scale(1.12); background: #1e8e3e; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mesh Quest</h1>
+  <div class="chips">
+    <div class="chip main" id="chip-vertex"><div class="label">Vertex score</div><div class="value" id="s-vertex">–</div></div>
+    <div class="chip" title="Provable lower bound on the vertex score for an all-quad mesh (discrete Gauss–Bonnet)."><div class="label">Par</div><div class="value" id="s-par">–</div></div>
+    <div class="chip"><div class="label">Face score</div><div class="value" id="s-face">–</div></div>
+    <div class="chip"><div class="label">Angle</div><div class="value" id="s-angle">–</div></div>
+    <div class="chip" id="chip-quality" title="Minimum scaled Jacobian: sin of the worst corner angle in the mesh. Must clear the threshold to win."><div class="label">Min quality</div><div class="value" id="s-quality">–</div></div>
+    <div class="chip" title="Sum of (desired − actual) degree. Topology fixes what is achievable."><div class="label">Net defect</div><div class="value" id="s-defect">–</div></div>
+    <div class="chip"><div class="label">Moves</div><div class="value" id="s-moves">–</div></div>
+    <div class="chip" title="Your fewest-moves win on this shape."><div class="label">Best</div><div class="value" id="s-best">–</div></div>
+  </div>
+  <div class="spacer"></div>
+  <select id="shape"></select>
+  <button id="reset">New game</button>
+</header>
+<div class="toolbar">
+  <button class="mode" data-mode="insert_vertex"><kbd>1</kbd>➕ Vertex</button>
+  <button class="mode" data-mode="delete_vertex"><kbd>2</kbd>➖ Vertex</button>
+  <button class="mode" data-mode="insert_edge"><kbd>3</kbd>➕ Edge</button>
+  <button class="mode" data-mode="delete_edge"><kbd>4</kbd>➖ Edge</button>
+  <button id="undo"><kbd>u</kbd>↩ Undo</button>
+  <button id="smooth"><kbd>s</kbd>〰 Smooth</button>
+  <label class="auto"><input type="checkbox" id="autosmooth" checked> auto-smooth</label>
+  <span class="hint" id="hint"></span>
+</div>
+<div id="stage">
+  <svg id="canvas"></svg>
+  <canvas id="confetti"></canvas>
+  <button id="next" title="Next level">→</button>
+  <div id="toast"></div>
+</div>
+
+<script>
+let state = null;
+let mode = "insert_vertex";
+let selectedVertex = null;
+let wasWon = false;
+let hitEdges = [], hitVerts = [], hoverTarget = null;
+const EDGE_PICK_RADIUS = 40, VERTEX_PICK_RADIUS = 30;
+
+const HINTS = {
+  insert_vertex: "Click any edge to split it with a midpoint vertex.",
+  delete_vertex: "Click a highlighted vertex — degree 2 and not an original corner.",
+  insert_edge: "Click two vertices on the same face to connect them.",
+  delete_edge: "Click an interior edge to delete it and merge its two faces.",
+};
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+async function api(path, body) {
+  const opts = body
+    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    : {};
+  let resp;
+  try {
+    resp = await fetch(path, opts);
+  } catch {
+    toast("Server unreachable — is game/server.py running?");
+    return null;
+  }
+  const data = await resp.json();
+  if (!resp.ok) { toast(data.error || "Request failed"); return null; }
+  return data;
+}
+
+function setState(s) {
+  if (!s) return;
+  state = s;
+  selectedVertex = null;
+  render();
+}
+
+async function doOp(op, params) {
+  const auto = document.getElementById("autosmooth").checked;
+  setState(await api("/api/op", { op, params, smooth: auto }));
+}
+
+function partnerMap() {
+  const map = {};
+  for (const [a, b] of state.insertable_pairs) {
+    (map[a] = map[a] || new Set()).add(b);
+    (map[b] = map[b] || new Set()).add(a);
+  }
+  return map;
+}
+
+function render() {
+  const svg = document.getElementById("canvas");
+  svg.setAttribute("class", mode === "insert_vertex" || mode === "delete_edge" ? "edge-mode" : "");
+  const W = svg.clientWidth, H = svg.clientHeight, M = 60;
+  const xs = state.vertices.map(v => v.x), ys = state.vertices.map(v => v.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scale = Math.min((W - 2 * M) / Math.max(maxX - minX, 1e-9),
+                         (H - 2 * M) / Math.max(maxY - minY, 1e-9));
+  const offX = (W - (maxX - minX) * scale) / 2;
+  const offY = (H - (maxY - minY) * scale) / 2;
+  const X = x => offX + (x - minX) * scale;
+  const Y = y => H - offY - (y - minY) * scale;
+
+  const pos = {};
+  for (const v of state.vertices) pos[v.id] = [X(v.x), Y(v.y)];
+
+  const partners = partnerMap();
+  let out = "";
+
+  // faces
+  for (const f of state.faces) {
+    const pts = f.vertices.map(id => pos[id].join(",")).join(" ");
+    let cls = f.degree === 4 ? "d4" : f.degree === 3 ? "d3" : f.degree === 2 ? "d2" : "dbig";
+    if (f.quality < state.quality_threshold) cls = "degen";
+    out += `<polygon class="face ${cls}" points="${pts}"><title>face ${f.id} · degree ${f.degree} · quality ${f.quality}</title></polygon>`;
+  }
+
+  // edges (curve duplicates so 2-gons stay visible)
+  const groups = {};
+  for (const e of state.edges) {
+    const key = Math.min(e.v1, e.v2) + "-" + Math.max(e.v1, e.v2);
+    (groups[key] = groups[key] || []).push(e);
+  }
+  hitEdges = [];
+  for (const group of Object.values(groups)) {
+    group.forEach((e, i) => {
+      const [x1, y1] = pos[e.v1], [x2, y2] = pos[e.v2];
+      const off = (i - (group.length - 1) / 2) * 26;
+      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+      const cx = (x1 + x2) / 2 - dy / len * off, cy = (y1 + y2) / 2 + dx / len * off;
+      const d = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+      const dim = mode === "delete_edge" && !e.deletable ? "dim" : "";
+      // sample the quadratic for nearest-edge hit testing
+      const samples = [];
+      for (let t = 0; t <= 1.001; t += 0.125) {
+        const u = 1 - t;
+        samples.push([u * u * x1 + 2 * t * u * cx + t * t * x2,
+                      u * u * y1 + 2 * t * u * cy + t * t * y2]);
+      }
+      hitEdges.push({ id: e.id, deletable: e.deletable, samples });
+      out += `<g class="${dim}">
+        <path class="edge ${e.boundary ? "boundary" : ""}" data-edge="${e.id}" d="${d}"></path>
+      </g>`;
+    });
+  }
+
+  // vertices
+  hitVerts = [];
+  for (const v of state.vertices) {
+    const defect = v.degree - v.desired;
+    const cls = defect === 0 ? "ok" : Math.abs(defect) === 1 ? "off1" : "off2";
+    let actionable = false, dim = false;
+    if (mode === "delete_vertex") { actionable = v.deletable; dim = !v.deletable; }
+    if (mode === "insert_edge") {
+      actionable = true;
+      if (selectedVertex !== null && selectedVertex !== v.id) {
+        dim = !(partners[selectedVertex] && partners[selectedVertex].has(v.id));
+        actionable = !dim;
+      }
+    }
+    const sel = v.id === selectedVertex ? "selected" : "";
+    const [x, y] = pos[v.id];
+    const r = v.user ? 10 : 8.5;
+    hitVerts.push({ id: v.id, x, y, eligible: actionable });
+    const heat = v.quality < state.quality_threshold
+      ? `<circle cx="${x}" cy="${y}" r="19" fill="#d0453e" pointer-events="none"
+           opacity="${Math.min(0.4, (state.quality_threshold - Math.max(v.quality, -1)) * 0.3).toFixed(2)}"/>`
+      : "";
+    out += `<g class="${dim ? "dim" : ""}">
+      ${heat}
+      <circle class="vertex ${cls} ${v.user ? "user" : ""} ${sel} ${actionable ? "actionable" : ""}"
+              data-vertex="${v.id}" cx="${x}" cy="${y}" r="${r}">
+        <title>v${v.id} · degree ${v.degree} / desired ${v.desired} · quality ${v.quality}${v.user ? " · corner" : ""}</title>
+      </circle>
+      ${defect !== 0 ? `<text class="vlabel" x="${x}" y="${y + 3}">${defect > 0 ? "+" : ""}${defect}</text>` : ""}
+    </g>`;
+  }
+
+  svg.innerHTML = out;
+  hoverTarget = null;
+
+  // header
+  const s = state.scores;
+  document.getElementById("s-vertex").textContent = s.vertex;
+  document.getElementById("s-par").textContent = state.par;
+  document.getElementById("s-face").textContent = s.face;
+  document.getElementById("s-angle").textContent = s.angle;
+  document.getElementById("s-quality").textContent = s.min_quality.toFixed(2);
+  document.getElementById("chip-quality").classList.toggle("bad", s.min_quality < state.quality_threshold);
+  document.getElementById("s-defect").textContent = s.defect_sum;
+  document.getElementById("s-moves").textContent = state.moves;
+  document.getElementById("s-best").textContent = state.best ?? "–";
+  document.getElementById("chip-vertex").classList.toggle("perfect", s.vertex === state.par);
+  document.getElementById("undo").disabled = !state.can_undo;
+  document.getElementById("hint").textContent = HINTS[mode];
+
+  const sel = document.getElementById("shape");
+  if (sel.options.length === 0) {
+    for (const name of state.shapes) {
+      const o = document.createElement("option");
+      o.value = o.textContent = name;
+      sel.appendChild(o);
+    }
+  }
+  sel.value = state.shape;
+
+  // win state is derived from the mesh itself: the next-arrow lives exactly
+  // as long as the board satisfies the win condition
+  const isWon = s.vertex === state.par && s.face === 0
+      && s.min_quality >= state.quality_threshold;
+  const shapes = state.shapes;
+  const nextShape = shapes[(shapes.indexOf(state.shape) + 1) % shapes.length];
+  const nextBtn = document.getElementById("next");
+  nextBtn.classList.toggle("show", isWon);
+  nextBtn.title = `Next level: ${nextShape}`;
+  // park the arrow just right of the mesh, vertically centered on it
+  nextBtn.style.left = Math.min(X(maxX) + 46, W - 70) + "px";
+  nextBtn.style.top = (Y(minY) + Y(maxY)) / 2 + "px";
+  if (isWon && !wasWon) {
+    confettiBurst();
+    if (state.new_record) toast(`🏆 New record: ${state.moves} moves`);
+  }
+  wasWon = isWon;
+}
+
+// --- confetti -------------------------------------------------------------
+function confettiBurst() {
+  const canvas = document.getElementById("confetti");
+  const stage = document.getElementById("stage");
+  canvas.width = stage.clientWidth;
+  canvas.height = stage.clientHeight;
+  const ctx = canvas.getContext("2d");
+  const colors = ["#1e8e3e", "#0b6bcb", "#e8a13c", "#d0453e", "#7c4dbe", "#2bb3a3"];
+  const parts = [];
+  for (let i = 0; i < 140; i++) {
+    parts.push({
+      x: canvas.width / 2 + (Math.random() - 0.5) * canvas.width * 0.5,
+      y: canvas.height * (0.25 + Math.random() * 0.2),
+      vx: (Math.random() - 0.5) * 9,
+      vy: -4 - Math.random() * 7,
+      w: 5 + Math.random() * 5,
+      h: 3 + Math.random() * 4,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.3,
+      color: colors[i % colors.length],
+    });
+  }
+  const t0 = performance.now();
+  function tick(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const alive = (t - t0) < 2600;
+    for (const p of parts) {
+      p.vy += 0.18; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - (t - t0) / 2600);
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) requestAnimationFrame(tick);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  requestAnimationFrame(tick);
+}
+
+// --- nearest-target picking ----------------------------------------------
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lsq = dx * dx + dy * dy;
+  const t = lsq ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lsq)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function pickTarget(mx, my) {
+  if (mode === "insert_vertex" || mode === "delete_edge") {
+    let best = null, bestDist = EDGE_PICK_RADIUS;
+    for (const e of hitEdges) {
+      if (mode === "delete_edge" && !e.deletable) continue;
+      for (let i = 0; i + 1 < e.samples.length; i++) {
+        const d = distToSegment(mx, my, ...e.samples[i], ...e.samples[i + 1]);
+        if (d < bestDist) { bestDist = d; best = { kind: "edge", id: e.id }; }
+      }
+    }
+    return best;
+  }
+  let best = null, bestDist = VERTEX_PICK_RADIUS;
+  for (const v of hitVerts) {
+    if (!v.eligible) continue;
+    const d = Math.hypot(mx - v.x, my - v.y);
+    if (d < bestDist) { bestDist = d; best = { kind: "vertex", id: v.id }; }
+  }
+  return best;
+}
+
+function setHover(target) {
+  const svg = document.getElementById("canvas");
+  if (hoverTarget && (!target || target.kind !== hoverTarget.kind || target.id !== hoverTarget.id)) {
+    const old = svg.querySelector(
+      hoverTarget.kind === "edge"
+        ? `[data-edge="${hoverTarget.id}"]` : `circle[data-vertex="${hoverTarget.id}"]`);
+    if (old) old.classList.remove("near");
+  }
+  if (target) {
+    const el = svg.querySelector(
+      target.kind === "edge"
+        ? `[data-edge="${target.id}"]` : `circle[data-vertex="${target.id}"]`);
+    if (el) el.classList.add("near");
+  }
+  hoverTarget = target;
+  svg.classList.toggle("has-target", !!target);
+}
+
+function mousePos(e) {
+  const rect = document.getElementById("canvas").getBoundingClientRect();
+  return [e.clientX - rect.left, e.clientY - rect.top];
+}
+
+const canvasEl = document.getElementById("canvas");
+canvasEl.addEventListener("mousemove", e => {
+  if (!state) return;
+  setHover(pickTarget(...mousePos(e)));
+});
+canvasEl.addEventListener("mouseleave", () => setHover(null));
+canvasEl.addEventListener("click", e => {
+  if (!state) return;
+  const target = pickTarget(...mousePos(e));
+  if (!target) {
+    if (mode === "insert_edge" && selectedVertex !== null) { selectedVertex = null; render(); }
+    return;
+  }
+  if (target.kind === "edge") {
+    doOp(mode === "insert_vertex" ? "insert_vertex" : "delete_edge", { edge: target.id });
+  } else if (mode === "delete_vertex") {
+    doOp("delete_vertex", { vertex: target.id });
+  } else if (mode === "insert_edge") {
+    if (selectedVertex === null) { selectedVertex = target.id; render(); }
+    else if (selectedVertex === target.id) { selectedVertex = null; render(); }
+    else doOp("insert_edge", { a: selectedVertex, b: target.id });
+  }
+});
+
+function setMode(m) {
+  mode = m;
+  selectedVertex = null;
+  document.querySelectorAll(".mode").forEach(b =>
+    b.classList.toggle("active", b.dataset.mode === m));
+  if (state) render();
+}
+
+document.querySelectorAll(".mode").forEach(b =>
+  b.addEventListener("click", () => setMode(b.dataset.mode)));
+document.getElementById("undo").addEventListener("click", async () =>
+  setState(await api("/api/undo", {})));
+document.getElementById("smooth").addEventListener("click", async () =>
+  setState(await api("/api/smooth", { iters: 3 })));
+document.getElementById("reset").addEventListener("click", async () =>
+  setState(await api("/api/new", { shape: document.getElementById("shape").value })));
+document.getElementById("shape").addEventListener("change", async e =>
+  setState(await api("/api/new", { shape: e.target.value })));
+document.getElementById("next").addEventListener("click", async () => {
+  const shapes = state.shapes;
+  const nextShape = shapes[(shapes.indexOf(state.shape) + 1) % shapes.length];
+  setState(await api("/api/new", { shape: nextShape }));
+});
+window.addEventListener("resize", () => state && render());
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+  const keys = { 1: "insert_vertex", 2: "delete_vertex", 3: "insert_edge", 4: "delete_edge" };
+  if (keys[e.key]) setMode(keys[e.key]);
+  else if (e.key === "u") document.getElementById("undo").click();
+  else if (e.key === "s") document.getElementById("smooth").click();
+});
+
+setMode("insert_vertex");
+(async () => setState(await api("/api/state")))();
+</script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playing to Par</title>
+<meta name="description" content="Reinforcement learning for provably optimal quadrilateral block decompositions: an agent that meshes a domain from its bare boundary to the Gauss–Bonnet bound on its irregularity.">
+<meta property="og:title" content="Playing to Par">
+<meta property="og:description" content="Reinforcement learning for provably optimal quadrilateral block decompositions.">
+<meta property="og:image" content="https://arjunnarayanan.github.io/par-quad/media/compare.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fbfcfd; --surface: #ffffff; --fg: #17202a; --muted: #56616e; --faint: #8a95a1;
+  --line: #e3e8ee; --soft: #f2f5f8; --code: #f3f6f9;
+  --blue: #0072b2; --blue-soft: #e6f1f8; --orange: #d55e00; --lavender: #c9c3e6; --lav-soft: #efedf8;
+  --hero-a: #eef4fa; --hero-b: #f4f1fb;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 6px 20px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1318; --surface: #161b22; --fg: #e6eaef; --muted: #a3adb8; --faint: #7d8793;
+          --line: #262d36; --soft: #1b2129; --code: #1a2028;
+          --blue: #4ea3dc; --blue-soft: #16283a; --orange: #f08a3c; --lav-soft: #211f33;
+          --hero-a: #121b26; --hero-b: #1a1726;
+          --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+       font: 16px/1.65 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       -webkit-font-smoothing: antialiased; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 22px; }
+
+/* hero */
+header.hero { background: linear-gradient(135deg, var(--hero-a), var(--hero-b)); border-bottom: 1px solid var(--line);
+              position: relative; overflow: hidden; }
+header.hero::before { content: ""; position: absolute; inset: 0; opacity: .5; pointer-events: none;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 36px 36px; mask-image: radial-gradient(ellipse at 70% 40%, #000 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at 70% 40%, #000 0%, transparent 70%); }
+.hero-inner { position: relative; display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center;
+              padding: 64px 0 56px; }
+.eyebrow { display: inline-block; font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+           color: var(--blue); background: var(--blue-soft); padding: 4px 10px; border-radius: 999px; margin-bottom: 16px; }
+h1 { font-size: 3.1rem; line-height: 1.04; letter-spacing: -.025em; margin: 0 0 12px; font-weight: 800; }
+h1 .par { color: var(--blue); }
+.tagline { font-size: 1.22rem; color: var(--muted); margin: 0 0 20px; line-height: 1.45; }
+.authors { margin: 0 0 26px; font-size: .98rem; }
+.authors b { font-weight: 600; }
+.authors span { color: var(--muted); }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 10px; font-weight: 600;
+       font-size: .95rem; border: 1px solid var(--line); background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.btn:hover { text-decoration: none; border-color: var(--blue); color: var(--blue); }
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.btn svg { width: 17px; height: 17px; }
+.hero-video { background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(16,24,40,.14); padding: 10px;
+              border: 1px solid var(--line); }
+.hero-video video { display: block; width: 100%; border-radius: 10px; }
+.hero-video .cap { font-size: .82rem; color: #56616e; text-align: center; padding: 8px 4px 2px; }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: -34px 0 0; position: relative; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 16px; box-shadow: var(--shadow); }
+.stat .num { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.stat .num small { font-size: 1rem; color: var(--muted); font-weight: 600; }
+.stat .lbl { font-size: .88rem; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+.stat.blue .num { color: var(--blue); }
+.stat.orange .num { color: var(--orange); }
+
+section { padding: 64px 0 8px; }
+.kicker { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-bottom: 6px; }
+h2 { font-size: 1.9rem; letter-spacing: -.02em; line-height: 1.2; margin: 0 0 14px; font-weight: 750; }
+.lead { font-size: 1.08rem; color: var(--muted); max-width: 760px; margin: 0 0 26px; }
+p { margin: 0 0 14px; }
+
+/* steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: var(--shadow); }
+.step .n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; font-weight: 700;
+           font-size: .9rem; margin-bottom: 12px; }
+.step:nth-child(1) .n { background: var(--blue-soft); color: var(--blue); }
+.step:nth-child(2) .n { background: var(--lav-soft); color: #6b5fb5; }
+.step:nth-child(3) .n { background: #fbeee4; color: var(--orange); }
+@media (prefers-color-scheme: dark) { .step:nth-child(3) .n { background: #2e1f14; } .step:nth-child(2) .n { color: #a79ef0; } }
+.step h3 { margin: 0 0 8px; font-size: 1.08rem; }
+.step p { margin: 0; color: var(--muted); font-size: .95rem; }
+.formula { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .95rem; background: var(--soft);
+           border-radius: 8px; padding: 8px 12px; margin: 12px 0 0; color: var(--fg); text-align: center; }
+
+/* figures */
+.figure { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+.figure img { display: block; width: 100%; height: auto; }
+.figcap { font-size: .9rem; color: var(--muted); margin-top: 10px; }
+.two { display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; align-items: center; }
+
+/* videos */
+.videos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.vcard { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow);
+         display: flex; flex-direction: column; }
+.vcard video { display: block; width: 100%; aspect-ratio: 1/1; object-fit: contain; background: #fff; }
+.vcard .t { padding: 12px 14px 14px; border-top: 1px solid #eef1f4; background: #fff; }
+.vcard .t b { display: block; font-size: .95rem; color: #17202a; }
+.vcard .t span { font-size: .85rem; color: #56616e; }
+.pill { display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+        vertical-align: 2px; }
+.pill.ok { background: #e3f4ea; color: #1f7a45; }
+.pill.new { background: #fbeee4; color: #b24d00; }
+
+/* tables */
+.tables { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.tcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px 6px 4px; box-shadow: var(--shadow);
+         overflow-x: auto; }
+.tcard h3 { font-size: .95rem; margin: 10px 14px 4px; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: right; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--faint); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+tbody tr:last-child td { border-bottom: none; }
+tr.ours td { font-weight: 700; background: var(--blue-soft); }
+tr.ours td:first-child { border-radius: 8px 0 0 8px; } tr.ours td:last-child { border-radius: 0 8px 8px 0; }
+.bar { display: inline-block; height: 7px; border-radius: 4px; background: var(--blue); vertical-align: middle; margin-left: 8px; opacity: .85; }
+.bar.g { background: var(--faint); opacity: .5; }
+.note { font-size: .88rem; color: var(--muted); margin-top: 14px; }
+
+/* code */
+pre { background: var(--code); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; overflow-x: auto;
+      font: .86rem/1.6 "JetBrains Mono", ui-monospace, monospace; margin: 0 0 14px; }
+p code { font-family: "JetBrains Mono", ui-monospace, monospace; background: var(--code); padding: 1px 6px; border-radius: 5px; font-size: .88em; }
+.codegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.codegrid h3 { font-size: 1rem; margin: 0 0 8px; }
+
+/* play */
+.play { display: grid; grid-template-columns: 1fr 1.25fr; gap: 30px; align-items: center; background: linear-gradient(135deg, var(--hero-b), var(--hero-a));
+        border: 1px solid var(--line); border-radius: 18px; padding: 30px; }
+.play img { width: 100%; border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow); display: block; }
+.play h2 { margin-bottom: 10px; }
+
+footer { margin-top: 70px; padding: 28px 0 44px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+@media (max-width: 880px) {
+  .hero-inner, .two, .play, .codegrid, .tables { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); margin-top: 24px; }
+  .steps, .videos { grid-template-columns: 1fr; }
+  h1 { font-size: 2.4rem; }
+  .hero-inner { padding: 44px 0 36px; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div>
+      <span class="eyebrow">Reinforcement learning &middot; Mesh generation</span>
+      <h1>Playing to <span class="par">Par</span></h1>
+      <p class="tagline">Reinforcement learning for provably optimal quadrilateral block decompositions</p>
+      <p class="authors"><b>Arjun Narayanan</b> and <b>Per-Olof Persson</b><br><span>University of California, Berkeley</span></p>
+      <div class="buttons">
+        <a class="btn primary" href="https://arxiv.org/abs/ARXIV_ID"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>Paper</a>
+        <a class="btn" href="https://github.com/ArjunNarayanan/par-quad"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.02 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>Code</a>
+        <a class="btn" href="play.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>Play Mesh Quest</a>
+        <a class="btn" href="#cite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h4v4H8a1 1 0 0 0-1 1v5M13 7h4v4h-3a1 1 0 0 0-1 1v5"/></svg>Cite</a>
+      </div>
+    </div>
+    <div class="hero-video">
+      <video src="media/curved-holes.mp4" autoplay muted loop playsinline></video>
+      <div class="cap">The released agent on a curved domain with a hole it never trained on. It reaches par in 41 moves.</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="stats">
+    <div class="stat blue"><div class="num">90<small> / 96</small></div><div class="lbl">held-out domains meshed provably optimally</div></div>
+    <div class="stat"><div class="num">0</div><div class="lbl">median irregular vertices above par, against 7.5&ndash;26 for Gmsh</div></div>
+    <div class="stat"><div class="num">2&times;</div><div class="lbl">the training size, still nearly optimal with no retraining</div></div>
+    <div class="stat orange"><div class="num">0</div><div class="lbl">curved domains seen in training, yet at par on 37 of 96</div></div>
+  </div>
+
+  <section>
+    <div class="kicker">The idea</div>
+    <h2>A certificate of optimality, and an agent that earns it</h2>
+    <p class="lead">A block decomposition splits a domain into quadrilaterals, and it is judged largely by how many of its vertices are irregular. For every domain there is a floor on that number, fixed before any mesh exists. We train an agent to reach it.</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><h3>The bound: par</h3><p>The discrete Gauss&ndash;Bonnet identity fixes a lower bound on irregularity from the domain's corner angles and topology alone. A mesh that reaches it is provably optimal in its connectivity.</p><div class="formula">I(M) &ge; par(&Omega;) = |c(&Omega;) + 4&chi;|</div></div>
+      <div class="step"><span class="n">2</span><h3>An agent on the half-edge mesh</h3><p>Starting from the bare boundary, the agent inserts chords and vertices on a doubly connected edge list. Its convolutions follow <code>next</code>, <code>previous</code> and <code>twin</code>, so it runs unchanged on domains larger than any seen in training.</p></div>
+      <div class="step"><span class="n">3</span><h3>Cloning past a sparse reward</h3><p>Random play almost never reaches par. Optimal meshes that are trivial to construct, walked backward into demonstrations, get PPO started; PPO on generated domains takes it from there.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">In action</div>
+    <h2>Watch it mesh, one move at a time</h2>
+    <p class="lead">Shaded faces are not yet quadrilaterals. Dots mark the irregular vertices of the finished mesh; on the curved domain they are exactly the three its corners force.</p>
+    <div class="videos">
+      <div class="vcard"><video src="media/indist.mp4" autoplay muted loop playsinline></video>
+        <div class="t"><b>A part with a hole <span class="pill ok">optimal</span></b><span>18 corners, 29 moves</span></div></div>
+      <div class="vcard"><video src="media/larger.mp4" autoplay muted loop playsinline></video>
+        <div class="t"><b>Twice the training size <span class="pill ok">optimal</span></b><span>two holes, 73 moves</span></div></div>
+      <div class="vcard"><video src="media/curved.mp4" autoplay muted loop playsinline></video>
+        <div class="t"><b>Curved, never seen <span class="pill new">at par 3</span></b><span>fillets and a notch, 66 moves</span></div></div>
+    </div>
+    <p class="note">Single greedy rollouts of the released agent. The tables below use the paper's full evaluation procedure.</p>
+  </section>
+
+  <section>
+    <div class="kicker">Against Gmsh</div>
+    <h2>Fewer irregular vertices, at the same element count</h2>
+    <div class="two">
+      <div class="figure"><img src="media/compare.png" alt="Our agent and Gmsh on three domains, with irregular vertices marked" loading="lazy"></div>
+      <div>
+        <p class="lead" style="margin-bottom:14px">On the same domains, Gmsh's meshers leave many irregular vertices (the dots) even when they are allowed several times the elements. The agent's meshes are at or near the bound.</p>
+        <p style="color:var(--muted)">Top: an in-distribution part with a hole, which the agent meshes optimally. Middle: a domain twice the training size. Bottom: a curved domain with holes, never seen in training.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Results</div>
+    <h2>Held-out mechanical parts</h2>
+    <p class="lead">Counts are domains. <em>Excess</em> is the median number of irregular vertices above par; <em>at par</em> counts domains meshed provably optimally.</p>
+    <div class="tables">
+      <div class="tcard">
+        <h3>96 domains, 8&ndash;24 corners</h3>
+        <table>
+          <thead><tr><th>Method</th><th>all-quad</th><th>usable</th><th>excess</th><th>at par</th></tr></thead>
+          <tbody>
+            <tr><td>Gmsh blossom</td><td>51</td><td>38</td><td>9</td><td>0</td></tr>
+            <tr><td>Gmsh frontal-quad</td><td>43</td><td>29</td><td>8</td><td>1</td></tr>
+            <tr><td>Gmsh quasi-structured</td><td>96</td><td>96</td><td>7.5</td><td>2</td></tr>
+            <tr><td>Gmsh blossom-full</td><td>96</td><td>96</td><td>26</td><td>0</td></tr>
+            <tr class="ours"><td>Ours</td><td>96.0</td><td>95.7</td><td>0</td><td>90.2<span class="bar" style="width:56px"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tcard">
+        <h3>64 domains, 25&ndash;50 corners</h3>
+        <table>
+          <thead><tr><th>Method</th><th>all-quad</th><th>usable</th><th>excess</th><th>at par</th></tr></thead>
+          <tbody>
+            <tr><td>Gmsh blossom</td><td>26</td><td>18</td><td>39</td><td>0</td></tr>
+            <tr><td>Gmsh frontal-quad</td><td>15</td><td>14</td><td>34</td><td>0</td></tr>
+            <tr><td>Gmsh quasi-structured</td><td>64</td><td>60</td><td>22</td><td>0</td></tr>
+            <tr><td>Gmsh blossom-full</td><td>64</td><td>64</td><td>156</td><td>0</td></tr>
+            <tr class="ours"><td>Ours</td><td>64.0</td><td>62.0</td><td>0.75</td><td>31.0<span class="bar" style="width:29px"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="note">Gmsh blossom and frontal-quad run at our element count; quasi-structured and blossom-full at their natural sizes, 3&ndash;15&times; ours. Ours: five attempts per domain at a doubled move budget with a split-and-continue repair, averaged over evaluation seeds. Curved-boundary results and full tables are in the paper.</p>
+  </section>
+
+  <section>
+    <div class="kicker">Training data for free</div>
+    <h2>Optimal meshes, walked backward</h2>
+    <div class="two">
+      <div>
+        <p class="lead" style="margin-bottom:14px">Some optimal meshes are easy to build: polyominoes, annuli, meshes around a hub. Undoing one edge at a time turns each into a sequence of the agent's own moves that ends at par, so behaviour cloning has unlimited, certified demonstrations.</p>
+        <p style="color:var(--muted)">Each row shows a constructed optimal mesh, a point part-way along the backward walk, the single face it starts from, and the instance the agent trains on.</p>
+      </div>
+      <div class="figure"><img src="media/certified.png" alt="Certified instances: constructed optimal meshes walked backward to a single face" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section id="code">
+    <div class="kicker">Code</div>
+    <h2>Get started</h2>
+    <div class="codegrid">
+      <div>
+        <h3>Install</h3>
+<pre><code>git clone https://github.com/ArjunNarayanan/par-quad.git
+cd par-quad
+python3.12 -m venv venv
+venv/bin/pip install -r requirements.txt</code></pre>
+        <p class="note" style="margin-top:0">The paper's domains come from <b>geo2d</b>, released soon. Until then <code>export GEOGEN_PATH=tools/geo2d_lite</code> runs everything on a stand-in generator whose domains differ from the paper's.</p>
+      </div>
+      <div>
+        <h3>Mesh a domain with the released agent</h3>
+<pre><code>venv/bin/python utilities/animate_rollout.py \
+    -suite straight-holes -draw 10 -n 24 \
+    -out out -name demo</code></pre>
+        <p class="note" style="margin-top:0">Writes <code>out/demo.mp4</code>. The README covers the paper's evaluation, the Gmsh comparison, the curved repair search and training from scratch (about four hours on a laptop).</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="play">
+      <div>
+        <div class="kicker">Mesh Quest</div>
+        <h2>Can you beat the agent?</h2>
+        <p class="lead" style="margin-bottom:18px">Play the agent's game in your browser: the same moves, the same bound. It solves every straight-sided level, but not every curved one.</p>
+        <a class="btn primary" href="play.html"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Play now</a>
+      </div>
+      <a href="play.html"><img src="media/mesh-quest.png" alt="Mesh Quest, the block decomposition puzzle game" loading="lazy"></a>
+    </div>
+  </section>
+
+  <section id="cite">
+    <div class="kicker">Citation</div>
+    <h2>Cite this work</h2>
+<pre><code>@article{narayanan2026playing,
+  title   = {Playing to Par: Reinforcement Learning for Provably Optimal
+             Quadrilateral Block Decompositions},
+  author  = {Narayanan, Arjun and Persson, Per-Olof},
+  journal = {arXiv preprint arXiv:ARXIV_ID},
+  year    = {2026}
+}</code></pre>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap"><span>Playing to Par &middot; Arjun Narayanan and Per-Olof Persson</span><span>Code released under the <a href="https://github.com/ArjunNarayanan/par-quad/blob/main/LICENSE">MIT License</a></span></div>
+</footer>
+</body>
+</html>
