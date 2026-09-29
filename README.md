@@ -9,7 +9,7 @@ aims for **par**: the lower bound on vertex irregularity that the discrete Gauss
 identity fixes from the domain's corner angles and topology alone. A mesh that reaches par
 is provably optimal in its connectivity.
 
-[Paper](https://arxiv.org/abs/ARXIV_ID) · [Project page](https://arjunnarayanan.github.io/par-quad/) · [Play Mesh Quest](https://arjunnarayanan.github.io/par-quad/play.html)
+[Paper](https://arxiv.org/abs/2609.32146) · [Project page](https://arjunnarayanan.github.io/par-quad/) · [Play Mesh Quest](https://arjunnarayanan.github.io/par-quad/play.html)
 
 ## Install
 
@@ -124,7 +124,7 @@ utilities/run_scale_arm.sh pinwheel-mitq-e2e-v1 models/paper-2026-09-24/pinwheel
   title   = {Playing to Par: Reinforcement Learning for Provably Optimal
              Quadrilateral Block Decompositions},
   author  = {Narayanan, Arjun and Persson, Per-Olof},
-  journal = {arXiv preprint arXiv:ARXIV_ID},
+  journal = {arXiv preprint arXiv:2609.32146},
   year    = {2026}
 }
 ```
