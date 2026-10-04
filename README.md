@@ -9,7 +9,7 @@ aims for **par**: the lower bound on vertex irregularity that the discrete Gauss
 identity fixes from the domain's corner angles and topology alone. A mesh that reaches par
 is provably optimal in its connectivity.
 
-[Paper](https://arxiv.org/abs/2609.32146) · [Project page](https://arjunnarayanan.github.io/par-quad/) · [Play Mesh Quest](https://arjunnarayanan.github.io/par-quad/play.html)
+[Paper](https://arxiv.org/abs/2609.32146) · [Project page](https://arjunnarayanan.github.io/par-quad/) · [Play Mesh Quest](https://arjunnarayanan.github.io/par-quad/play.html) · [Model on Hugging Face](https://huggingface.co/arjunnarayanan/par-quad-pinwheel-mitq-e2e-v1-4M)
 
 ## Install
 
